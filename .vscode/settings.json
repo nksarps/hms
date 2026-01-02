@@ -6,6 +6,7 @@
             "default": true
         }
     ],
-    
-    "java.configuration.updateBuildConfiguration": "disabled"
+
+    "java.configuration.updateBuildConfiguration": "disabled",
+    "java.debug.settings.onBuildFailureProceed": true
 }
