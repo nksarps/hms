@@ -8,15 +8,51 @@ import java.sql.Date;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import java.sql.Statement;
 
+/**
+ * Repository layer for patient data access using JDBC.
+ * 
+ * <p>Provides CRUD operations and search functionality for patient records.
+ * All methods execute direct SQL queries against the 'patient' table in the MySQL database.
+ * Search operations support case-insensitive filtering across multiple fields
+ * (first name, last name, phone, email).
+ * 
+ * <p>Key features:
+ * <ul>
+ *   <li>Paginated search with configurable limit and offset</li>
+ *   <li>Case-insensitive LIKE queries for flexible searching</li>
+ *   <li>Visit history retrieval via JOIN with appointment and doctor tables</li>
+ *   <li>Parameterized queries to prevent SQL injection</li>
+ * </ul>
+ * 
+ * <p>All database operations use try-with-resources to ensure proper connection cleanup.
+ * Methods throw SQLException which should be handled by the caller (typically the UI layer).
+ * 
+ * @see com.nks.hms.model.Patient
+ * @see com.nks.hms.db.Database
+ */
+// Thin JDBC repository with basic search, pagination, and history lookups.
 public class PatientRepository {
     private static final String BASE_SELECT = "SELECT ID, FirstName, MiddleName, LastName, Email, PhoneNumber, DateOfBirth, Address FROM patient";
 
+    /**
+     * Searches for patients matching the given search term with pagination support.
+     * 
+     * <p>The search is case-insensitive and matches against first name, last name,
+     * phone number, and email address. Results are ordered by ID descending (newest first).
+     * 
+     * @param searchTerm Text to search for (can be null or empty to return all patients)
+     * @param limit Maximum number of records to return (page size)
+     * @param offset Number of records to skip (for pagination)
+     * @return List of matching patients (empty list if no matches)
+     * @throws SQLException If database query fails
+     */
+    // Case-insensitive search across name/phone/email; ordered by newest first.
     public List<Patient> find(String searchTerm, int limit, int offset) throws SQLException {
         StringBuilder sql = new StringBuilder(BASE_SELECT);
         List<String> params = new ArrayList<>();
@@ -49,6 +85,15 @@ public class PatientRepository {
         }
     }
 
+    /**
+     * Counts the total number of patients matching the given search term.
+     * Uses the same filtering logic as find() to ensure consistency.
+     * 
+     * @param searchTerm Text to search for (can be null or empty to count all)
+     * @return Total number of matching patient records
+     * @throws SQLException If database query fails
+     */
+    // Count rows matching the same filters used in find().
     public int count(String searchTerm) throws SQLException {
         StringBuilder sql = new StringBuilder("SELECT COUNT(*) FROM patient");
         List<String> params = new ArrayList<>();
@@ -76,6 +121,14 @@ public class PatientRepository {
         return 0;
     }
 
+    /**
+     * Retrieves a single patient by their unique database ID.
+     * 
+     * @param id The patient's primary key
+     * @return Optional containing the patient if found, empty otherwise
+     * @throws SQLException If database query fails
+     */
+    // Fetch a single patient by ID.
     public Optional<Patient> findById(int id) throws SQLException {
         String sql = BASE_SELECT + " WHERE ID = ?";
         try (Connection conn = Database.getConnection();
@@ -90,6 +143,15 @@ public class PatientRepository {
         return Optional.empty();
     }
 
+    /**
+     * Inserts a new patient record and returns the auto-generated ID.
+     * The patient's ID field is ignored as the database generates it.
+     * 
+     * @param patient Patient object with required fields populated
+     * @return The auto-generated database ID, or -1 if insert failed
+     * @throws SQLException If insert fails
+     */
+    // Insert a new patient and return generated key.
     public int insert(Patient patient) throws SQLException {
         String sql = "INSERT INTO patient (FirstName, MiddleName, LastName, Email, PhoneNumber, DateOfBirth, Address) VALUES (?, ?, ?, ?, ?, ?, ?)";
         try (Connection conn = Database.getConnection();
@@ -105,6 +167,14 @@ public class PatientRepository {
         return -1;
     }
 
+    /**
+     * Updates an existing patient record with new values.
+     * The patient's ID must be set and match an existing record.
+     * 
+     * @param patient Patient object with ID and updated fields
+     * @throws SQLException If update fails or ID doesn't exist
+     */
+    // Update an existing patient record.
     public void update(Patient patient) throws SQLException {
         String sql = "UPDATE patient SET FirstName = ?, MiddleName = ?, LastName = ?, Email = ?, PhoneNumber = ?, DateOfBirth = ?, Address = ? WHERE ID = ?";
         try (Connection conn = Database.getConnection();
@@ -115,6 +185,14 @@ public class PatientRepository {
         }
     }
 
+    /**
+     * Permanently deletes a patient record from the database.
+     * Warning: Hard delete with no archive mechanism.
+     * 
+     * @param id The ID of the patient to delete
+     * @throws SQLException If delete fails (e.g., foreign key constraint)
+     */
+    // Delete a patient by ID.
     public void delete(int id) throws SQLException {
         String sql = "DELETE FROM patient WHERE ID = ?";
         try (Connection conn = Database.getConnection();
@@ -124,6 +202,15 @@ public class PatientRepository {
         }
     }
 
+    /**
+     * Retrieves appointment history for a patient via JOIN query.
+     * Results are ordered by appointment date descending (most recent first).
+     * 
+     * @param patientId The ID of the patient
+     * @return List of visit history records (empty if none found)
+     * @throws SQLException If query fails
+     */
+    // Retrieve recent appointment history for display-only purposes.
     public List<VisitHistory> fetchHistory(int patientId) throws SQLException {
         String sql = "SELECT d.FirstName, d.LastName, a.AppointmentDate, a.Reason, '' as Notes "
                 + "FROM appointment a "
@@ -148,6 +235,16 @@ public class PatientRepository {
         }
     }
 
+    /**
+     * Binds patient field values to a prepared statement.
+     * 
+     * <p>Helper method used by insert and update operations to set all patient
+     * fields in the correct order. Handles null date conversion properly.
+     * 
+     * @param stmt The prepared statement to bind parameters to
+     * @param patient The patient whose data should be bound
+     * @throws SQLException If parameter binding fails
+     */
     private void bindPatient(PreparedStatement stmt, Patient patient) throws SQLException {
         stmt.setString(1, patient.getFirstName());
         stmt.setString(2, patient.getMiddleName());
@@ -162,6 +259,17 @@ public class PatientRepository {
         stmt.setString(7, patient.getAddress());
     }
 
+    /**
+     * Maps a database result set row to a Patient object.
+     * 
+     * <p>Helper method that extracts all patient fields from the current row
+     * of a result set and constructs a Patient instance. Handles null values
+     * and type conversions (SQL Date to LocalDate).
+     * 
+     * @param rs The result set positioned at the row to map
+     * @return A Patient object populated with data from the result set
+     * @throws SQLException If column access fails or columns are missing
+     */
     private Patient mapPatient(ResultSet rs) throws SQLException {
         int id = rs.getInt("ID");
         String first = rs.getString("FirstName");

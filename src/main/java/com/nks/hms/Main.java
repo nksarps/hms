@@ -32,7 +32,36 @@ import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 
+/**
+ * Main JavaFX application class for the Hospital Management System.
+ * 
+ * <p>Provides a tabbed user interface for managing patients and doctors with full CRUD
+ * operations. The application connects directly to a MySQL database via JDBC and uses
+ * JavaFX controls for data presentation and manipulation.
+ * 
+ * <p>Features:
+ * <ul>
+ *   <li>Patient management with search, pagination, and visit history viewing</li>
+ *   <li>Doctor management with search and pagination</li>
+ *   <li>Form validation for all inputs</li>
+ *   <li>Real-time feedback for user actions</li>
+ *   <li>Responsive table views with constrained column resizing</li>
+ * </ul>
+ * 
+ * <p>Architecture:
+ * <ul>
+ *   <li>UI layer: This class (Main.java)</li>
+ *   <li>Repository layer: PatientRepository and DoctorRepository</li>
+ *   <li>Database layer: Database.java for connection management</li>
+ *   <li>Model layer: Patient, Doctor, VisitHistory POJOs</li>
+ * </ul>
+ * 
+ * @see com.nks.hms.repository.PatientRepository
+ * @see com.nks.hms.repository.DoctorRepository
+ */
+// JavaFX shell that presents patient and doctor CRUD tabs backed by repositories.
 public class Main extends Application {
+    /** Number of records to display per page in paginated table views */
     private static final int PAGE_SIZE = 10;
     private final PatientRepository patientRepository = new PatientRepository();
     private final DoctorRepository doctorRepository = new DoctorRepository();
@@ -41,6 +70,12 @@ public class Main extends Application {
         launch(args);
     }
 
+    /**
+     * Initializes and displays the main application window.
+     * Creates a tabbed interface with separate tabs for patient and doctor management.
+     * 
+     * @param stage The primary stage provided by JavaFX runtime
+     */
     @Override
     public void start(Stage stage) {
         stage.setTitle("Hospital Management - Data Access");
@@ -51,10 +86,32 @@ public class Main extends Application {
         stage.show();
     }
 
+    /**
+     * Constructs the complete patient management tab.
+     * 
+     * <p>Layout structure:
+     * <ul>
+     *   <li>Left pane: Search box, patient table with pagination, visit history table</li>
+     *   <li>Right pane: Form for creating/editing patients with action buttons</li>
+     * </ul>
+     * 
+     * <p>Key interactions:
+     * <ul>
+     *   <li>Search field triggers immediate filtering when Enter is pressed or Search clicked</li>
+     *   <li>Selecting a row populates the form and loads visit history</li>
+     *   <li>Save button creates new patient or updates selected one</li>
+     *   <li>Delete button removes selected patient after confirmation</li>
+     *   <li>Clear button resets form and clears selection</li>
+     * </ul>
+     * 
+     * @return Configured Tab component ready to be added to TabPane
+     */
+    // Build the patient screen: table + visit history + form + controls.
     private Tab buildPatientTab() {
         Tab tab = new Tab("Patients");
         tab.setClosable(false);
 
+        // Configure main table with columns mapped to Patient properties via reflection
         TableView<Patient> table = new TableView<>();
         table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
         TableColumn<Patient, Integer> idCol = new TableColumn<>("ID");
@@ -71,6 +128,7 @@ public class Main extends Application {
         emailCol.setCellValueFactory(new PropertyValueFactory<>("email"));
         table.getColumns().addAll(idCol, firstCol, lastCol, dobCol, phoneCol, emailCol);
 
+        // Configure visit history table (read-only view of past appointments)
         TableView<VisitHistory> historyTable = new TableView<>();
         historyTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
         TableColumn<VisitHistory, String> doctorCol = new TableColumn<>("Doctor");
@@ -136,6 +194,7 @@ public class Main extends Application {
 
         tab.setContent(layout);
 
+        // Bind search + pagination to repository queries for responsive filtering.
         searchBtn.setOnAction(e -> {
             pagination.setCurrentPageIndex(0);
             loadPatients(table, pagination, searchField.getText(), feedback);
@@ -146,6 +205,7 @@ public class Main extends Application {
         });
         pagination.currentPageIndexProperty().addListener((obs, old, idx) -> loadPatients(table, pagination, searchField.getText(), feedback));
 
+        // Selecting a patient hydrates the form and fetches visit history.
         table.getSelectionModel().selectedItemProperty().addListener((obs, old, patient) -> {
             populatePatientForm(patient, firstNameField, middleNameField, lastNameField, dobPicker, phoneField, emailField, addressArea);
             loadHistory(patient, historyTable, feedback);
@@ -164,6 +224,30 @@ public class Main extends Application {
         return tab;
     }
 
+    /**
+     * Constructs the complete doctor management tab.
+     * 
+     * <p>Simpler than patient tab - no visit history as doctors don't have
+     * appointment history views (they appear in patient histories instead).
+     * 
+     * <p>Layout structure:
+     * <ul>
+     *   <li>Left pane: Search box and doctor table with pagination</li>
+     *   <li>Right pane: Form for creating/editing doctors with action buttons</li>
+     * </ul>
+     * 
+     * <p>Key interactions:
+     * <ul>
+     *   <li>Search triggers filtering (Enter or button click)</li>
+     *   <li>Row selection populates edit form</li>
+     *   <li>Save creates/updates doctor record</li>
+     *   <li>Delete removes selected doctor</li>
+     *   <li>Clear resets form</li>
+     * </ul>
+     * 
+     * @return Configured Tab component for doctor management
+     */
+    // Build the doctor screen: table + form + controls.
     private Tab buildDoctorTab() {
         Tab tab = new Tab("Doctors");
         tab.setClosable(false);
@@ -226,6 +310,7 @@ public class Main extends Application {
         layout.setRight(rightPane);
         tab.setContent(layout);
 
+        // Same search + pagination flow as patients but for doctors.
         searchBtn.setOnAction(e -> {
             pagination.setCurrentPageIndex(0);
             loadDoctors(table, pagination, searchField.getText(), feedback);
@@ -250,25 +335,48 @@ public class Main extends Application {
         return tab;
     }
 
+    /**
+     * Loads a page of patients from the database and updates the UI.
+     * 
+     * <p>Executes COUNT and SELECT queries to support pagination.
+     * Updates table view, pagination control, and feedback label.
+     * 
+     * @param table TableView to populate
+     * @param pagination Pagination control
+     * @param searchTerm Search filter
+     * @param feedback Status label
+     */
     private void loadPatients(TableView<Patient> table, Pagination pagination, String searchTerm, Label feedback) {
+        // Pull a page of patients matching the search term and update pagination text.
         try {
+            // First, count total matching records to calculate page count
             int total = patientRepository.count(searchTerm);
             int pages = Math.max(1, (int) Math.ceil(total / (double) PAGE_SIZE));
             pagination.setPageCount(pages);
+            
+            // Ensure current page index is within valid range
             int current = Math.min(pagination.getCurrentPageIndex(), pages - 1);
             pagination.setCurrentPageIndex(current);
+            
+            // Calculate offset for SQL LIMIT/OFFSET clause
             int offset = current * PAGE_SIZE;
+            
+            // Fetch the actual page of results
             List<Patient> patients = patientRepository.find(searchTerm, PAGE_SIZE, offset);
             table.setItems(FXCollections.observableArrayList(patients));
+            
+            // Display success message with result count
             feedback.setText(total + " patients found");
             feedback.setStyle("-fx-text-fill: #006400;");
         } catch (SQLException ex) {
+            // Display error message in red
             feedback.setText("Failed to load patients: " + ex.getMessage());
             feedback.setStyle("-fx-text-fill: #B00020;");
         }
     }
 
     private void loadDoctors(TableView<Doctor> table, Pagination pagination, String searchTerm, Label feedback) {
+        // Same as loadPatients but for doctors.
         try {
             int total = doctorRepository.count(searchTerm);
             int pages = Math.max(1, (int) Math.ceil(total / (double) PAGE_SIZE));
@@ -287,6 +395,7 @@ public class Main extends Application {
     }
 
     private void populatePatientForm(Patient patient, TextField firstNameField, TextField middleNameField, TextField lastNameField, DatePicker dobPicker, TextField phoneField, TextField emailField, TextArea addressArea) {
+        // When a patient is selected, push values into the form; clear when none.
         if (patient == null) {
             clearPatientForm(firstNameField, middleNameField, lastNameField, dobPicker, phoneField, emailField, addressArea);
             return;
@@ -301,6 +410,7 @@ public class Main extends Application {
     }
 
     private void populateDoctorForm(Doctor doctor, TextField firstNameField, TextField lastNameField, TextField phoneField, TextField emailField) {
+        // When a doctor is selected, push values into the form; clear when none.
         if (doctor == null) {
             clearDoctorForm(firstNameField, lastNameField, phoneField, emailField);
             return;
@@ -312,6 +422,7 @@ public class Main extends Application {
     }
 
     private void clearPatientForm(TextField firstNameField, TextField middleNameField, TextField lastNameField, DatePicker dobPicker, TextField phoneField, TextField emailField, TextArea addressArea) {
+        // Reset all patient form fields and date picker.
         firstNameField.clear();
         middleNameField.clear();
         lastNameField.clear();
@@ -322,6 +433,7 @@ public class Main extends Application {
     }
 
     private void clearDoctorForm(TextField firstNameField, TextField lastNameField, TextField phoneField, TextField emailField) {
+        // Reset all doctor form fields.
         firstNameField.clear();
         lastNameField.clear();
         phoneField.clear();
@@ -329,6 +441,7 @@ public class Main extends Application {
     }
 
     private void handleSavePatient(TableView<Patient> table, Pagination pagination, TextField searchField, Label feedback, TextField firstNameField, TextField middleNameField, TextField lastNameField, DatePicker dobPicker, TextField phoneField, TextField emailField, TextArea addressArea) {
+        // Validate, insert or update, then reload table and clear form.
         Optional<String> validationError = validatePatient(firstNameField.getText(), lastNameField.getText(), dobPicker.getValue(), phoneField.getText(), emailField.getText());
         if (validationError.isPresent()) {
             feedback.setText(validationError.get());
@@ -369,6 +482,7 @@ public class Main extends Application {
     }
 
     private void handleDeletePatient(TableView<Patient> table, Pagination pagination, TextField searchField, Label feedback, TableView<VisitHistory> historyTable, TextField firstNameField, TextField middleNameField, TextField lastNameField, DatePicker dobPicker, TextField phoneField, TextField emailField, TextArea addressArea) {
+        // Remove the selected patient, refresh table, and clear form/history.
         Patient selected = table.getSelectionModel().getSelectedItem();
         if (selected == null) {
             feedback.setText("Select a patient to delete");
@@ -390,6 +504,7 @@ public class Main extends Application {
     }
 
     private void handleSaveDoctor(TableView<Doctor> table, Pagination pagination, TextField searchField, Label feedback, TextField firstNameField, TextField lastNameField, TextField phoneField, TextField emailField) {
+        // Validate, insert or update doctor, then refresh table and clear form.
         Optional<String> validationError = validateDoctor(firstNameField.getText(), lastNameField.getText(), phoneField.getText(), emailField.getText());
         if (validationError.isPresent()) {
             feedback.setText(validationError.get());
@@ -427,6 +542,7 @@ public class Main extends Application {
     }
 
     private void handleDeleteDoctor(TableView<Doctor> table, Pagination pagination, TextField searchField, Label feedback, TextField firstNameField, TextField lastNameField, TextField phoneField, TextField emailField) {
+        // Remove the selected doctor and refresh state.
         Doctor selected = table.getSelectionModel().getSelectedItem();
         if (selected == null) {
             feedback.setText("Select a doctor to delete");
@@ -447,6 +563,7 @@ public class Main extends Application {
     }
 
     private void loadHistory(Patient patient, TableView<VisitHistory> historyTable, Label feedback) {
+        // Populate recent visits table for the selected patient.
         if (patient == null) {
             historyTable.getItems().clear();
             return;
@@ -461,6 +578,7 @@ public class Main extends Application {
     }
 
     private Optional<String> validatePatient(String firstName, String lastName, LocalDate dob, String phone, String email) {
+        // Basic UI-side validation to keep bad data from hitting the DB.
         if (firstName == null || firstName.isBlank()) {
             return Optional.of("First name is required");
         }
@@ -486,6 +604,7 @@ public class Main extends Application {
     }
 
     private Optional<String> validateDoctor(String firstName, String lastName, String phone, String email) {
+        // Basic UI-side validation for doctor input.
         if (firstName == null || firstName.isBlank()) {
             return Optional.of("First name is required");
         }
