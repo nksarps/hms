@@ -30,4 +30,6 @@ replay_pid*
 # Environment Variables File
 .env
 
+target/
+
 # End of https://www.toptal.com/developers/gitignore/api/java
