@@ -5,6 +5,8 @@ import com.nks.hms.model.Patient;
 import com.nks.hms.model.VisitHistory;
 import com.nks.hms.repository.DoctorRepository;
 import com.nks.hms.repository.PatientRepository;
+import com.nks.hms.service.DoctorCache;
+import com.nks.hms.service.PatientCache;
 import java.sql.SQLException;
 import java.time.LocalDate;
 import java.util.List;
@@ -15,6 +17,7 @@ import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
+import javafx.scene.control.ComboBox;
 import javafx.scene.control.DatePicker;
 import javafx.scene.control.Label;
 import javafx.scene.control.Pagination;
@@ -59,12 +62,12 @@ import javafx.stage.Stage;
  * @see com.nks.hms.repository.PatientRepository
  * @see com.nks.hms.repository.DoctorRepository
  */
-// JavaFX shell that presents patient and doctor CRUD tabs backed by repositories.
+// JavaFX shell that presents patient and doctor CRUD tabs with caching and sorting.
 public class Main extends Application {
     /** Number of records to display per page in paginated table views */
     private static final int PAGE_SIZE = 10;
-    private final PatientRepository patientRepository = new PatientRepository();
-    private final DoctorRepository doctorRepository = new DoctorRepository();
+    private final PatientCache patientCache = new PatientCache(new PatientRepository());
+    private final DoctorCache doctorCache = new DoctorCache(new DoctorRepository());
 
     public static void main(String[] args) {
         launch(args);
@@ -142,9 +145,16 @@ public class Main extends Application {
         historyTable.getColumns().addAll(doctorCol, visitDateCol, reasonCol, notesCol);
 
         TextField searchField = new TextField();
-        searchField.setPromptText("Search by name, phone, or email");
+        searchField.setPromptText("Search by name, phone, email, or ID");
         Button searchBtn = new Button("Search");
-        HBox searchBox = new HBox(8, new Label("Search:"), searchField, searchBtn);
+        ComboBox<String> sortCombo = new ComboBox<>();
+        sortCombo.setItems(FXCollections.observableArrayList(
+                "ID (Newest)", "ID (Oldest)", "Name (A-Z)", "Name (Z-A)", 
+                "DOB (Oldest)", "DOB (Newest)"));
+        sortCombo.setValue("ID (Newest)");
+        sortCombo.setPrefWidth(130);
+        HBox searchBox = new HBox(8, new Label("Search:"), searchField, searchBtn, 
+                new Label("Sort:"), sortCombo);
         searchBox.setAlignment(Pos.CENTER_LEFT);
 
         Pagination pagination = new Pagination(1, 0);
@@ -194,16 +204,21 @@ public class Main extends Application {
 
         tab.setContent(layout);
 
-        // Bind search + pagination to repository queries for responsive filtering.
+        // Bind search + pagination + sorting to cache queries for responsive filtering.
         searchBtn.setOnAction(e -> {
             pagination.setCurrentPageIndex(0);
-            loadPatients(table, pagination, searchField.getText(), feedback);
+            loadPatients(table, pagination, searchField.getText(), sortCombo.getValue(), feedback);
         });
         searchField.setOnAction(e -> {
             pagination.setCurrentPageIndex(0);
-            loadPatients(table, pagination, searchField.getText(), feedback);
+            loadPatients(table, pagination, searchField.getText(), sortCombo.getValue(), feedback);
         });
-        pagination.currentPageIndexProperty().addListener((obs, old, idx) -> loadPatients(table, pagination, searchField.getText(), feedback));
+        sortCombo.setOnAction(e -> {
+            pagination.setCurrentPageIndex(0);
+            loadPatients(table, pagination, searchField.getText(), sortCombo.getValue(), feedback);
+        });
+        pagination.currentPageIndexProperty().addListener((obs, old, idx) -> 
+                loadPatients(table, pagination, searchField.getText(), sortCombo.getValue(), feedback));
 
         // Selecting a patient hydrates the form and fetches visit history.
         table.getSelectionModel().selectedItemProperty().addListener((obs, old, patient) -> {
@@ -211,8 +226,8 @@ public class Main extends Application {
             loadHistory(patient, historyTable, feedback);
         });
 
-        saveBtn.setOnAction(e -> handleSavePatient(table, pagination, searchField, feedback, firstNameField, middleNameField, lastNameField, dobPicker, phoneField, emailField, addressArea));
-        deleteBtn.setOnAction(e -> handleDeletePatient(table, pagination, searchField, feedback, historyTable, firstNameField, middleNameField, lastNameField, dobPicker, phoneField, emailField, addressArea));
+        saveBtn.setOnAction(e -> handleSavePatient(table, pagination, searchField, sortCombo, feedback, firstNameField, middleNameField, lastNameField, dobPicker, phoneField, emailField, addressArea));
+        deleteBtn.setOnAction(e -> handleDeletePatient(table, pagination, searchField, sortCombo, feedback, historyTable, firstNameField, middleNameField, lastNameField, dobPicker, phoneField, emailField, addressArea));
         clearBtn.setOnAction(e -> {
             clearPatientForm(firstNameField, middleNameField, lastNameField, dobPicker, phoneField, emailField, addressArea);
             table.getSelectionModel().clearSelection();
@@ -220,7 +235,7 @@ public class Main extends Application {
             feedback.setText("");
         });
 
-        loadPatients(table, pagination, "", feedback);
+        loadPatients(table, pagination, "", sortCombo.getValue(), feedback);
         return tab;
     }
 
@@ -267,9 +282,15 @@ public class Main extends Application {
         table.getColumns().addAll(idCol, firstCol, lastCol, phoneCol, emailCol);
 
         TextField searchField = new TextField();
-        searchField.setPromptText("Search by name, phone, or email");
+        searchField.setPromptText("Search by name, phone, email, or ID");
         Button searchBtn = new Button("Search");
-        HBox searchBox = new HBox(8, new Label("Search:"), searchField, searchBtn);
+        ComboBox<String> doctorSortCombo = new ComboBox<>();
+        doctorSortCombo.setItems(FXCollections.observableArrayList(
+                "ID (Newest)", "ID (Oldest)", "Name (A-Z)", "Name (Z-A)"));
+        doctorSortCombo.setValue("ID (Newest)");
+        doctorSortCombo.setPrefWidth(130);
+        HBox searchBox = new HBox(8, new Label("Search:"), searchField, searchBtn, 
+                new Label("Sort:"), doctorSortCombo);
         searchBox.setAlignment(Pos.CENTER_LEFT);
 
         Pagination pagination = new Pagination(1, 0);
@@ -310,34 +331,39 @@ public class Main extends Application {
         layout.setRight(rightPane);
         tab.setContent(layout);
 
-        // Same search + pagination flow as patients but for doctors.
+        // Same search + pagination + sorting flow as patients but for doctors.
         searchBtn.setOnAction(e -> {
             pagination.setCurrentPageIndex(0);
-            loadDoctors(table, pagination, searchField.getText(), feedback);
+            loadDoctors(table, pagination, searchField.getText(), doctorSortCombo.getValue(), feedback);
         });
         searchField.setOnAction(e -> {
             pagination.setCurrentPageIndex(0);
-            loadDoctors(table, pagination, searchField.getText(), feedback);
+            loadDoctors(table, pagination, searchField.getText(), doctorSortCombo.getValue(), feedback);
         });
-        pagination.currentPageIndexProperty().addListener((obs, old, idx) -> loadDoctors(table, pagination, searchField.getText(), feedback));
+        doctorSortCombo.setOnAction(e -> {
+            pagination.setCurrentPageIndex(0);
+            loadDoctors(table, pagination, searchField.getText(), doctorSortCombo.getValue(), feedback);
+        });
+        pagination.currentPageIndexProperty().addListener((obs, old, idx) -> 
+                loadDoctors(table, pagination, searchField.getText(), doctorSortCombo.getValue(), feedback));
 
         table.getSelectionModel().selectedItemProperty().addListener((obs, old, doctor) -> populateDoctorForm(doctor, firstNameField, lastNameField, phoneField, emailField));
 
-        saveBtn.setOnAction(e -> handleSaveDoctor(table, pagination, searchField, feedback, firstNameField, lastNameField, phoneField, emailField));
-        deleteBtn.setOnAction(e -> handleDeleteDoctor(table, pagination, searchField, feedback, firstNameField, lastNameField, phoneField, emailField));
+        saveBtn.setOnAction(e -> handleSaveDoctor(table, pagination, searchField, doctorSortCombo, feedback, firstNameField, lastNameField, phoneField, emailField));
+        deleteBtn.setOnAction(e -> handleDeleteDoctor(table, pagination, searchField, doctorSortCombo, feedback, firstNameField, lastNameField, phoneField, emailField));
         clearBtn.setOnAction(e -> {
             clearDoctorForm(firstNameField, lastNameField, phoneField, emailField);
             table.getSelectionModel().clearSelection();
             feedback.setText("");
         });
 
-        loadDoctors(table, pagination, "", feedback);
+        loadDoctors(table, pagination, "", doctorSortCombo.getValue(), feedback);
         return tab;
     }
 
     /**
-     * Loads a page of patients from the database and updates the UI.
-     * Optimized to detect numeric ID searches for instant lookup.
+     * Loads a page of patients from the cache and updates the UI.
+     * Optimized with caching and sorting support.
      * 
      * <p>Executes COUNT and SELECT queries to support pagination.
      * Updates table view, pagination control, and feedback label.
@@ -345,14 +371,17 @@ public class Main extends Application {
      * @param table TableView to populate
      * @param pagination Pagination control
      * @param searchTerm Search filter (numeric for ID search, text for name/phone/email)
+     * @param sortBy UI sort selection string
      * @param feedback Status label
      */
-    private void loadPatients(TableView<Patient> table, Pagination pagination, String searchTerm, Label feedback) {
-        // Pull a page of patients matching the search term and update pagination text.
-        // Optimized: numeric searches use direct ID lookup for instant results.
+    private void loadPatients(TableView<Patient> table, Pagination pagination, String searchTerm, String sortBy, Label feedback) {
+        // Pull a page of patients using cache for faster access and sorting.
+        // Optimized: numeric searches use direct ID lookup, results are cached.
         try {
+            PatientCache.SortBy sortOption = parsePatientSort(sortBy);
+            
             // First, count total matching records to calculate page count
-            int total = patientRepository.count(searchTerm);
+            int total = patientCache.count(searchTerm);
             int pages = Math.max(1, (int) Math.ceil(total / (double) PAGE_SIZE));
             pagination.setPageCount(pages);
             
@@ -360,16 +389,17 @@ public class Main extends Application {
             int current = Math.min(pagination.getCurrentPageIndex(), pages - 1);
             pagination.setCurrentPageIndex(current);
             
-            // Calculate offset for SQL LIMIT/OFFSET clause
+            // Calculate offset for pagination
             int offset = current * PAGE_SIZE;
             
-            // Fetch the actual page of results (auto-optimizes for numeric searches)
-            List<Patient> patients = patientRepository.find(searchTerm, PAGE_SIZE, offset);
+            // Fetch from cache with sorting (auto-optimizes for numeric searches)
+            List<Patient> patients = patientCache.find(searchTerm, PAGE_SIZE, offset, sortOption);
             table.setItems(FXCollections.observableArrayList(patients));
             
-            // Display success message with result count and search type hint
+            // Display success message with result count and optimization hints
             String searchType = isNumeric(searchTerm) ? " (ID search)" : "";
-            feedback.setText(total + " patients found" + searchType);
+            String cacheInfo = " | Cache: " + patientCache.getCacheStats();
+            feedback.setText(total + " patients found" + searchType + cacheInfo);
             feedback.setStyle("-fx-text-fill: #006400;");
         } catch (SQLException ex) {
             // Display error message in red
@@ -379,30 +409,35 @@ public class Main extends Application {
     }
 
     /**
-     * Loads a page of doctors from the database and updates the UI.
-     * Optimized to detect numeric ID searches for instant lookup.
+     * Loads a page of doctors from the cache and updates the UI.
+     * Optimized with caching and sorting support.
      * 
      * @param table TableView to populate
      * @param pagination Pagination control
      * @param searchTerm Search filter (numeric for ID search, text for name/phone/email)
+     * @param sortBy UI sort selection string
      * @param feedback Status label
      */
-    private void loadDoctors(TableView<Doctor> table, Pagination pagination, String searchTerm, Label feedback) {
-        // Same as loadPatients but for doctors.
-        // Optimized: numeric searches use direct ID lookup for instant results.
+    private void loadDoctors(TableView<Doctor> table, Pagination pagination, String searchTerm, String sortBy, Label feedback) {
+        // Same as loadPatients but for doctors with cache and sorting.
+        // Optimized: numeric searches use direct ID lookup, results are cached.
         try {
-            int total = doctorRepository.count(searchTerm);
+            DoctorCache.SortBy sortOption = parseDoctorSort(sortBy);
+            
+            int total = doctorCache.count(searchTerm);
             int pages = Math.max(1, (int) Math.ceil(total / (double) PAGE_SIZE));
             pagination.setPageCount(pages);
             int current = Math.min(pagination.getCurrentPageIndex(), pages - 1);
             pagination.setCurrentPageIndex(current);
             int offset = current * PAGE_SIZE;
-            List<Doctor> doctors = doctorRepository.find(searchTerm, PAGE_SIZE, offset);
+            
+            List<Doctor> doctors = doctorCache.find(searchTerm, PAGE_SIZE, offset, sortOption);
             table.setItems(FXCollections.observableArrayList(doctors));
             
-            // Display success message with result count and search type hint
+            // Display success message with result count and optimization hints
             String searchType = isNumeric(searchTerm) ? " (ID search)" : "";
-            feedback.setText(total + " doctors found" + searchType);
+            String cacheInfo = " | Cache: " + doctorCache.getCacheStats();
+            feedback.setText(total + " doctors found" + searchType + cacheInfo);
             feedback.setStyle("-fx-text-fill: #006400;");
         } catch (SQLException ex) {
             feedback.setText("Failed to load doctors: " + ex.getMessage());
@@ -475,8 +510,36 @@ public class Main extends Application {
         }
     }
 
-    private void handleSavePatient(TableView<Patient> table, Pagination pagination, TextField searchField, Label feedback, TextField firstNameField, TextField middleNameField, TextField lastNameField, DatePicker dobPicker, TextField phoneField, TextField emailField, TextArea addressArea) {
-        // Validate, insert or update, then reload table and clear form.
+    /**
+     * Converts UI sort selection to PatientCache.SortBy enum.
+     */
+    private PatientCache.SortBy parsePatientSort(String uiValue) {
+        if (uiValue == null) return PatientCache.SortBy.ID_DESC;
+        return switch (uiValue) {
+            case "ID (Oldest)" -> PatientCache.SortBy.ID_ASC;
+            case "Name (A-Z)" -> PatientCache.SortBy.NAME_ASC;
+            case "Name (Z-A)" -> PatientCache.SortBy.NAME_DESC;
+            case "DOB (Oldest)" -> PatientCache.SortBy.DOB_ASC;
+            case "DOB (Newest)" -> PatientCache.SortBy.DOB_DESC;
+            default -> PatientCache.SortBy.ID_DESC;
+        };
+    }
+
+    /**
+     * Converts UI sort selection to DoctorCache.SortBy enum.
+     */
+    private DoctorCache.SortBy parseDoctorSort(String uiValue) {
+        if (uiValue == null) return DoctorCache.SortBy.ID_DESC;
+        return switch (uiValue) {
+            case "ID (Oldest)" -> DoctorCache.SortBy.ID_ASC;
+            case "Name (A-Z)" -> DoctorCache.SortBy.NAME_ASC;
+            case "Name (Z-A)" -> DoctorCache.SortBy.NAME_DESC;
+            default -> DoctorCache.SortBy.ID_DESC;
+        };
+    }
+
+    private void handleSavePatient(TableView<Patient> table, Pagination pagination, TextField searchField, ComboBox<String> sortCombo, Label feedback, TextField firstNameField, TextField middleNameField, TextField lastNameField, DatePicker dobPicker, TextField phoneField, TextField emailField, TextArea addressArea) {
+        // Validate, insert or update via cache, then reload table and clear form.
         Optional<String> validationError = validatePatient(firstNameField.getText(), lastNameField.getText(), dobPicker.getValue(), phoneField.getText(), emailField.getText());
         if (validationError.isPresent()) {
             feedback.setText(validationError.get());
@@ -499,15 +562,15 @@ public class Main extends Application {
 
         try {
             if (isNew) {
-                int id = patientRepository.insert(selected);
+                int id = patientCache.insert(selected);
                 selected.setId(id);
-                feedback.setText("Patient saved");
+                feedback.setText("Patient saved (cache invalidated)");
             } else {
-                patientRepository.update(selected);
-                feedback.setText("Patient updated");
+                patientCache.update(selected);
+                feedback.setText("Patient updated (cache invalidated)");
             }
             feedback.setStyle("-fx-text-fill: #006400;");
-            loadPatients(table, pagination, searchField.getText(), feedback);
+            loadPatients(table, pagination, searchField.getText(), sortCombo.getValue(), feedback);
             clearPatientForm(firstNameField, middleNameField, lastNameField, dobPicker, phoneField, emailField, addressArea);
             table.getSelectionModel().clearSelection();
         } catch (SQLException ex) {
@@ -516,8 +579,8 @@ public class Main extends Application {
         }
     }
 
-    private void handleDeletePatient(TableView<Patient> table, Pagination pagination, TextField searchField, Label feedback, TableView<VisitHistory> historyTable, TextField firstNameField, TextField middleNameField, TextField lastNameField, DatePicker dobPicker, TextField phoneField, TextField emailField, TextArea addressArea) {
-        // Remove the selected patient, refresh table, and clear form/history.
+    private void handleDeletePatient(TableView<Patient> table, Pagination pagination, TextField searchField, ComboBox<String> sortCombo, Label feedback, TableView<VisitHistory> historyTable, TextField firstNameField, TextField middleNameField, TextField lastNameField, DatePicker dobPicker, TextField phoneField, TextField emailField, TextArea addressArea) {
+        // Remove the selected patient via cache, refresh table, and clear form/history.
         Patient selected = table.getSelectionModel().getSelectedItem();
         if (selected == null) {
             feedback.setText("Select a patient to delete");
@@ -525,10 +588,10 @@ public class Main extends Application {
             return;
         }
         try {
-            patientRepository.delete(selected.getId());
-            feedback.setText("Patient deleted");
+            patientCache.delete(selected.getId());
+            feedback.setText("Patient deleted (cache invalidated)");
             feedback.setStyle("-fx-text-fill: #006400;");
-            loadPatients(table, pagination, searchField.getText(), feedback);
+            loadPatients(table, pagination, searchField.getText(), sortCombo.getValue(), feedback);
             historyTable.getItems().clear();
             clearPatientForm(firstNameField, middleNameField, lastNameField, dobPicker, phoneField, emailField, addressArea);
             table.getSelectionModel().clearSelection();
@@ -538,8 +601,8 @@ public class Main extends Application {
         }
     }
 
-    private void handleSaveDoctor(TableView<Doctor> table, Pagination pagination, TextField searchField, Label feedback, TextField firstNameField, TextField lastNameField, TextField phoneField, TextField emailField) {
-        // Validate, insert or update doctor, then refresh table and clear form.
+    private void handleSaveDoctor(TableView<Doctor> table, Pagination pagination, TextField searchField, ComboBox<String> sortCombo, Label feedback, TextField firstNameField, TextField lastNameField, TextField phoneField, TextField emailField) {
+        // Validate, insert or update doctor via cache, then refresh table and clear form.
         Optional<String> validationError = validateDoctor(firstNameField.getText(), lastNameField.getText(), phoneField.getText(), emailField.getText());
         if (validationError.isPresent()) {
             feedback.setText(validationError.get());
@@ -559,15 +622,15 @@ public class Main extends Application {
 
         try {
             if (isNew) {
-                int id = doctorRepository.insert(selected);
+                int id = doctorCache.insert(selected);
                 selected.setId(id);
-                feedback.setText("Doctor saved");
+                feedback.setText("Doctor saved (cache invalidated)");
             } else {
-                doctorRepository.update(selected);
-                feedback.setText("Doctor updated");
+                doctorCache.update(selected);
+                feedback.setText("Doctor updated (cache invalidated)");
             }
             feedback.setStyle("-fx-text-fill: #006400;");
-            loadDoctors(table, pagination, searchField.getText(), feedback);
+            loadDoctors(table, pagination, searchField.getText(), sortCombo.getValue(), feedback);
             clearDoctorForm(firstNameField, lastNameField, phoneField, emailField);
             table.getSelectionModel().clearSelection();
         } catch (SQLException ex) {
@@ -576,8 +639,8 @@ public class Main extends Application {
         }
     }
 
-    private void handleDeleteDoctor(TableView<Doctor> table, Pagination pagination, TextField searchField, Label feedback, TextField firstNameField, TextField lastNameField, TextField phoneField, TextField emailField) {
-        // Remove the selected doctor and refresh state.
+    private void handleDeleteDoctor(TableView<Doctor> table, Pagination pagination, TextField searchField, ComboBox<String> sortCombo, Label feedback, TextField firstNameField, TextField lastNameField, TextField phoneField, TextField emailField) {
+        // Remove the selected doctor via cache and refresh state.
         Doctor selected = table.getSelectionModel().getSelectedItem();
         if (selected == null) {
             feedback.setText("Select a doctor to delete");
@@ -585,10 +648,10 @@ public class Main extends Application {
             return;
         }
         try {
-            doctorRepository.delete(selected.getId());
-            feedback.setText("Doctor deleted");
+            doctorCache.delete(selected.getId());
+            feedback.setText("Doctor deleted (cache invalidated)");
             feedback.setStyle("-fx-text-fill: #006400;");
-            loadDoctors(table, pagination, searchField.getText(), feedback);
+            loadDoctors(table, pagination, searchField.getText(), sortCombo.getValue(), feedback);
             clearDoctorForm(firstNameField, lastNameField, phoneField, emailField);
             table.getSelectionModel().clearSelection();
         } catch (SQLException ex) {
@@ -598,13 +661,13 @@ public class Main extends Application {
     }
 
     private void loadHistory(Patient patient, TableView<VisitHistory> historyTable, Label feedback) {
-        // Populate recent visits table for the selected patient.
+        // Populate recent visits table for the selected patient using cache.
         if (patient == null) {
             historyTable.getItems().clear();
             return;
         }
         try {
-            List<VisitHistory> visits = patientRepository.fetchHistory(patient.getId());
+            List<VisitHistory> visits = patientCache.getHistory(patient.getId());
             historyTable.setItems(FXCollections.observableArrayList(visits));
         } catch (SQLException ex) {
             feedback.setText("Failed to load history: " + ex.getMessage());
