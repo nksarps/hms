@@ -42,6 +42,7 @@ public class PatientRepository {
 
     /**
      * Searches for patients matching the given search term with pagination support.
+     * Optimized to perform direct ID lookup if search term is a valid integer.
      * 
      * <p>The search is case-insensitive and matches against first name, last name,
      * phone number, and email address. Results are ordered by ID descending (newest first).
@@ -53,7 +54,33 @@ public class PatientRepository {
      * @throws SQLException If database query fails
      */
     // Case-insensitive search across name/phone/email; ordered by newest first.
+    // Optimized: if searchTerm is numeric, performs direct ID lookup.
     public List<Patient> find(String searchTerm, int limit, int offset) throws SQLException {
+        // Fast path: if search term is a pure integer, do direct ID lookup
+        if (searchTerm != null && !searchTerm.isBlank()) {
+            try {
+                int id = Integer.parseInt(searchTerm.trim());
+                Optional<Patient> patient = findById(id);
+                return patient.map(List::of).orElse(List.of());
+            } catch (NumberFormatException e) {
+                // Not a number, fall through to text search
+            }
+        }
+        
+        return findByText(searchTerm, limit, offset);
+    }
+
+    /**
+     * Text-based search for patients (internal method).
+     * Performs case-insensitive LIKE queries across multiple fields.
+     * 
+     * @param searchTerm Text pattern to search for
+     * @param limit Maximum records to return
+     * @param offset Records to skip
+     * @return List of matching patients
+     * @throws SQLException If query fails
+     */
+    private List<Patient> findByText(String searchTerm, int limit, int offset) throws SQLException {
         StringBuilder sql = new StringBuilder(BASE_SELECT);
         List<String> params = new ArrayList<>();
         if (searchTerm != null && !searchTerm.isBlank()) {
@@ -88,13 +115,37 @@ public class PatientRepository {
     /**
      * Counts the total number of patients matching the given search term.
      * Uses the same filtering logic as find() to ensure consistency.
+     * Optimized to return 0 or 1 for numeric ID searches.
      * 
      * @param searchTerm Text to search for (can be null or empty to count all)
      * @return Total number of matching patient records
      * @throws SQLException If database query fails
      */
     // Count rows matching the same filters used in find().
+    // Optimized: for numeric searches, returns 0 or 1 quickly.
     public int count(String searchTerm) throws SQLException {
+        // Fast path: if search term is numeric, check if that ID exists
+        if (searchTerm != null && !searchTerm.isBlank()) {
+            try {
+                int id = Integer.parseInt(searchTerm.trim());
+                return findById(id).isPresent() ? 1 : 0;
+            } catch (NumberFormatException e) {
+                // Not a number, fall through to text count
+            }
+        }
+        
+        return countByText(searchTerm);
+    }
+
+    /**
+     * Text-based count (internal method).
+     * Counts records matching the text pattern.
+     * 
+     * @param searchTerm Text pattern to count
+     * @return Number of matching records
+     * @throws SQLException If query fails
+     */
+    private int countByText(String searchTerm) throws SQLException {
         StringBuilder sql = new StringBuilder("SELECT COUNT(*) FROM patient");
         List<String> params = new ArrayList<>();
         if (searchTerm != null && !searchTerm.isBlank()) {
