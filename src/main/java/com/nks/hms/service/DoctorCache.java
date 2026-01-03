@@ -77,12 +77,17 @@ public class DoctorCache {
     
     public DoctorCache(DoctorRepository repository) {
         this.repository = repository;
+        // LinkedHashMap with access-order (true) enables LRU behavior
+        // When an entry is accessed, it moves to the end of the insertion order
+        // removeEldestEntry removes the least recently used entry when size exceeds limit
         this.doctorCache = new LinkedHashMap<>(MAX_CACHE_SIZE, 0.75f, true) {
             @Override
             protected boolean removeEldestEntry(Map.Entry<Integer, Doctor> eldest) {
+                // Automatic eviction: removes oldest (least recently used) when exceeding capacity
                 return size() > MAX_CACHE_SIZE;
             }
         };
+        // Search result cache also uses LRU with TTL for freshness
         this.searchCache = new LinkedHashMap<>(MAX_SEARCH_CACHE_SIZE, 0.75f, true) {
             @Override
             protected boolean removeEldestEntry(Map.Entry<String, CachedSearchResult> eldest) {
@@ -103,53 +108,75 @@ public class DoctorCache {
     }
     
     public List<Doctor> find(String searchTerm, int limit, int offset, SortBy sortBy) throws SQLException {
+        // Build unique cache key from all search parameters
         String cacheKey = buildSearchCacheKey(searchTerm, limit, offset, sortBy);
         
+        // Check cache first: O(1) lookup by key
         CachedSearchResult cached = searchCache.get(cacheKey);
         if (cached != null && !cached.isExpired()) {
+            // Cache hit: return copy to prevent external modification
             return new ArrayList<>(cached.results);
         }
         
+        // Cache miss or expired: query database with LIKE search or indexed ID lookup
         List<Doctor> results = repository.find(searchTerm, limit, offset);
         
+        // Apply in-memory sorting if requested (faster than DB sorting for cached data)
         if (sortBy != null && !results.isEmpty()) {
             results = results.stream()
                     .sorted(sortBy.getComparator())
                     .collect(Collectors.toList());
         }
         
+        // Get total count for pagination calculation
         int totalCount = repository.count(searchTerm);
+        // Store result with timestamp for TTL validation
         searchCache.put(cacheKey, new CachedSearchResult(results, totalCount));
+        // Also populate individual doctor cache for faster subsequent lookups by ID
         results.forEach(d -> doctorCache.put(d.getId(), d));
         
         return results;
     }
     
     public int count(String searchTerm) throws SQLException {
+        // Try to get count from cached search results to avoid extra database query
+        // Iterate through cache entries looking for matching search term
         for (Map.Entry<String, CachedSearchResult> entry : searchCache.entrySet()) {
+            // Check if cache key starts with same search term and hasn't expired
             if (entry.getKey().startsWith(searchTerm + "|") && !entry.getValue().isExpired()) {
+                // Return cached count (O(1) operation instead of COUNT(*) query)
                 return entry.getValue().totalCount;
             }
         }
         
+        // No valid cache entry found, query database
         return repository.count(searchTerm);
     }
     
     public int insert(Doctor doctor) throws SQLException {
+        // Insert into database
         int id = repository.insert(doctor);
+        // Data changed: clear all caches to prevent stale results
+        // New records won't appear in searches until cache is refreshed
         invalidateAllCaches();
         return id;
     }
     
     public void update(Doctor doctor) throws SQLException {
+        // Update in database
         repository.update(doctor);
+        // Remove only the specific doctor from cache (most conservative approach)
         invalidateDoctorCache(doctor.getId());
+        // Clear search results since they may contain modified data
         invalidateSearchCache();
     }
     
     public void delete(int id) throws SQLException {
+        // Delete from database
         repository.delete(id);
+        // Remove from individual cache
         invalidateDoctorCache(id);
+        // Clear search results since they may contain deleted data
         invalidateSearchCache();
     }
     

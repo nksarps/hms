@@ -98,13 +98,19 @@ public class PatientCache {
      */
     public PatientCache(PatientRepository repository) {
         this.repository = repository;
-        // LinkedHashMap with access-order for LRU behavior
+        // LinkedHashMap with access-order (true) enables LRU behavior
+        // When an entry is accessed via get(), it moves to the end of insertion order
+        // removeEldestEntry automatically removes least recently used when size exceeds limit
+        // This prevents unbounded memory growth while keeping hot data in cache
         this.patientCache = new LinkedHashMap<>(MAX_CACHE_SIZE, 0.75f, true) {
             @Override
             protected boolean removeEldestEntry(Map.Entry<Integer, Patient> eldest) {
+                // Keep cache size <= MAX_CACHE_SIZE, evict oldest entry when over limit
                 return size() > MAX_CACHE_SIZE;
             }
         };
+        // Search result cache with separate size limit and LRU eviction
+        // Stores complete search query results with TTL for freshness
         this.searchCache = new LinkedHashMap<>(MAX_SEARCH_CACHE_SIZE, 0.75f, true) {
             @Override
             protected boolean removeEldestEntry(Map.Entry<String, CachedSearchResult> eldest) {
@@ -144,29 +150,35 @@ public class PatientCache {
      * @throws SQLException If database query fails
      */
     public List<Patient> find(String searchTerm, int limit, int offset, SortBy sortBy) throws SQLException {
+        // Build unique cache key from all search parameters (pagination + sort order matters)
         String cacheKey = buildSearchCacheKey(searchTerm, limit, offset, sortBy);
         
-        // Check cache and validate TTL
+        // Check if result is already cached and not expired
         CachedSearchResult cached = searchCache.get(cacheKey);
         if (cached != null && !cached.isExpired()) {
+            // Cache hit: return a defensive copy to prevent external modification of cache
             return new ArrayList<>(cached.results);
         }
         
-        // Cache miss or expired - query database
+        // Cache miss or TTL expired: query database (may hit numeric ID optimization)
         List<Patient> results = repository.find(searchTerm, limit, offset);
         
         // Apply in-memory sorting if requested
+        // More efficient than re-sorting in database for cached results
+        // Uses chainable Comparators: last name -> first name for stable multi-field sort
         if (sortBy != null && !results.isEmpty()) {
             results = results.stream()
                     .sorted(sortBy.getComparator())
                     .collect(Collectors.toList());
         }
         
-        // Cache the results with metadata
+        // Get total count for pagination (needed for page calculation)
         int totalCount = repository.count(searchTerm);
+        // Store in search cache with current timestamp for TTL validation
         searchCache.put(cacheKey, new CachedSearchResult(results, totalCount));
         
-        // Also cache individual patients by ID for faster subsequent lookups
+        // Secondary benefit: populate individual patient cache from search results
+        // Subsequent ID lookups for these patients will be O(1) from patientCache
         results.forEach(p -> patientCache.put(p.getId(), p));
         
         return results;
@@ -181,13 +193,17 @@ public class PatientCache {
      * @throws SQLException If database query fails
      */
     public int count(String searchTerm) throws SQLException {
-        // Try to get count from cached search results
+        // Optimization: try to get count from cache instead of executing COUNT(*) query
+        // Iterate through cached search results looking for a valid match
         for (Map.Entry<String, CachedSearchResult> entry : searchCache.entrySet()) {
+            // Check if this cache entry is for the same search term and not expired
             if (entry.getKey().startsWith(searchTerm + "|") && !entry.getValue().isExpired()) {
+                // Return cached total count (avoids database query)
                 return entry.getValue().totalCount;
             }
         }
         
+        // No valid cached result found, must query database
         return repository.count(searchTerm);
     }
     
@@ -199,7 +215,9 @@ public class PatientCache {
      * @throws SQLException If insert fails
      */
     public int insert(Patient patient) throws SQLException {
+        // Insert into database first
         int id = repository.insert(patient);
+        // Full cache invalidation: new patient won't appear in existing searches otherwise
         invalidateAllCaches();
         return id;
     }
@@ -211,8 +229,11 @@ public class PatientCache {
      * @throws SQLException If update fails
      */
     public void update(Patient patient) throws SQLException {
+        // Update in database
         repository.update(patient);
+        // Conservative approach: remove only this patient from ID cache
         invalidatePatientCache(patient.getId());
+        // Also clear search results since they may contain the modified patient
         invalidateSearchCache();
     }
     
@@ -223,8 +244,11 @@ public class PatientCache {
      * @throws SQLException If delete fails
      */
     public void delete(int id) throws SQLException {
+        // Delete from database
         repository.delete(id);
+        // Remove from individual patient cache
         invalidatePatientCache(id);
+        // Clear search results since they may contain the deleted patient
         invalidateSearchCache();
     }
     
