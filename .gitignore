@@ -32,6 +32,4 @@ replay_pid*
 
 target/
 
-db/
-
 # End of https://www.toptal.com/developers/gitignore/api/java
