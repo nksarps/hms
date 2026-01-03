@@ -56,25 +56,28 @@ mvn javafx:run
 Database validation queries from `db/queries.sql` demonstrate correct schema implementation and data relationships.
 
 ### Table Population Verification
+
+**Department Table:** All departments successfully created with unique names and phone numbers
+
 ![Department Table](docs/screenshots/test-department-table.png)
-*All 43 departments successfully created with unique names and phone numbers*
+
+**Doctor Table:** All doctors loaded with proper foreign key references to departments
 
 ![Doctor Table](docs/screenshots/test-doctor-table.png)
-*All 43 doctors loaded with proper foreign key references to departments*
 
 ### Relationship Validation
 
-#### Appointments with Patient and Doctor Names
+**Appointments with Patient and Doctor Names:** Joined query showing appointments correctly linking patients and doctors with department information. All foreign keys intact.
+
 ![Appointments Query](docs/screenshots/test-appointments-joined.png)
-*Joined query showing appointments correctly linking patients and doctors with department information. All foreign keys intact.*
 
-#### Prescriptions with Medication Details
+**Prescriptions with Medication Details:** Complex join across Prescription → PrescriptionItem → MedicalInventory tables. Demonstrates proper linking of prescriptions to specific medications with dosage and duration.
+
 ![Prescriptions Query](docs/screenshots/test-prescriptions-inventory.png)
-*Complex join across Prescription → PrescriptionItem → MedicalInventory tables. Demonstrates proper linking of prescriptions to specific medications with dosage and duration.*
 
-#### Patient Feedback with Names
+**Patient Feedback with Names:** Patient feedback entries correctly associated with both patient and doctor records, showing ratings (1-5) and comments.
+
 ![Feedback Query](docs/screenshots/test-feedback-joined.png)
-*Patient feedback entries correctly associated with both patient and doctor records, showing ratings (1-5) and comments.*
 
 ### Validation Summary
 - ✅ All 8 tables populated with records
