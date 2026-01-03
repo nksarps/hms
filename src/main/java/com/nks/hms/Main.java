@@ -337,17 +337,19 @@ public class Main extends Application {
 
     /**
      * Loads a page of patients from the database and updates the UI.
+     * Optimized to detect numeric ID searches for instant lookup.
      * 
      * <p>Executes COUNT and SELECT queries to support pagination.
      * Updates table view, pagination control, and feedback label.
      * 
      * @param table TableView to populate
      * @param pagination Pagination control
-     * @param searchTerm Search filter
+     * @param searchTerm Search filter (numeric for ID search, text for name/phone/email)
      * @param feedback Status label
      */
     private void loadPatients(TableView<Patient> table, Pagination pagination, String searchTerm, Label feedback) {
         // Pull a page of patients matching the search term and update pagination text.
+        // Optimized: numeric searches use direct ID lookup for instant results.
         try {
             // First, count total matching records to calculate page count
             int total = patientRepository.count(searchTerm);
@@ -361,12 +363,13 @@ public class Main extends Application {
             // Calculate offset for SQL LIMIT/OFFSET clause
             int offset = current * PAGE_SIZE;
             
-            // Fetch the actual page of results
+            // Fetch the actual page of results (auto-optimizes for numeric searches)
             List<Patient> patients = patientRepository.find(searchTerm, PAGE_SIZE, offset);
             table.setItems(FXCollections.observableArrayList(patients));
             
-            // Display success message with result count
-            feedback.setText(total + " patients found");
+            // Display success message with result count and search type hint
+            String searchType = isNumeric(searchTerm) ? " (ID search)" : "";
+            feedback.setText(total + " patients found" + searchType);
             feedback.setStyle("-fx-text-fill: #006400;");
         } catch (SQLException ex) {
             // Display error message in red
@@ -375,8 +378,18 @@ public class Main extends Application {
         }
     }
 
+    /**
+     * Loads a page of doctors from the database and updates the UI.
+     * Optimized to detect numeric ID searches for instant lookup.
+     * 
+     * @param table TableView to populate
+     * @param pagination Pagination control
+     * @param searchTerm Search filter (numeric for ID search, text for name/phone/email)
+     * @param feedback Status label
+     */
     private void loadDoctors(TableView<Doctor> table, Pagination pagination, String searchTerm, Label feedback) {
         // Same as loadPatients but for doctors.
+        // Optimized: numeric searches use direct ID lookup for instant results.
         try {
             int total = doctorRepository.count(searchTerm);
             int pages = Math.max(1, (int) Math.ceil(total / (double) PAGE_SIZE));
@@ -386,7 +399,10 @@ public class Main extends Application {
             int offset = current * PAGE_SIZE;
             List<Doctor> doctors = doctorRepository.find(searchTerm, PAGE_SIZE, offset);
             table.setItems(FXCollections.observableArrayList(doctors));
-            feedback.setText(total + " doctors found");
+            
+            // Display success message with result count and search type hint
+            String searchType = isNumeric(searchTerm) ? " (ID search)" : "";
+            feedback.setText(total + " doctors found" + searchType);
             feedback.setStyle("-fx-text-fill: #006400;");
         } catch (SQLException ex) {
             feedback.setText("Failed to load doctors: " + ex.getMessage());
@@ -438,6 +454,25 @@ public class Main extends Application {
         lastNameField.clear();
         phoneField.clear();
         emailField.clear();
+    }
+
+    /**
+     * Checks if a string represents a valid integer.
+     * Used to detect ID-based searches for optimization.
+     * 
+     * @param str String to check
+     * @return true if the string is a valid integer, false otherwise
+     */
+    private boolean isNumeric(String str) {
+        if (str == null || str.isBlank()) {
+            return false;
+        }
+        try {
+            Integer.parseInt(str.trim());
+            return true;
+        } catch (NumberFormatException e) {
+            return false;
+        }
     }
 
     private void handleSavePatient(TableView<Patient> table, Pagination pagination, TextField searchField, Label feedback, TextField firstNameField, TextField middleNameField, TextField lastNameField, DatePicker dobPicker, TextField phoneField, TextField emailField, TextArea addressArea) {
