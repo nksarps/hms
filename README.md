@@ -33,10 +33,8 @@ Populates the database with 43 sample records per table for testing and demos.
 
 Create a `.env` file in the project root with your database credentials:
 ```
-DB_HOST=localhost
-DB_PORT=3306
-DB_NAME=hms
-DB_USER=your_username
+DB_URL=jdbc:mysql://localhost:3306/hms
+DB_USER=root
 DB_PASSWORD=your_password
 ```
 
