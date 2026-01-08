@@ -1,10 +1,13 @@
 package com.nks.hms;
 
+import com.nks.hms.controller.AppointmentController;
 import com.nks.hms.controller.DoctorController;
 import com.nks.hms.controller.PatientController;
 import com.nks.hms.factory.ServiceFactory;
+import com.nks.hms.service.IAppointmentService;
 import com.nks.hms.service.IDoctorService;
 import com.nks.hms.service.IPatientService;
+import com.nks.hms.ui.AppointmentTabBuilder;
 import com.nks.hms.ui.DoctorTabBuilder;
 import com.nks.hms.ui.PatientTabBuilder;
 import javafx.application.Application;
@@ -38,8 +41,10 @@ public class Main extends Application {
     // Dependencies created via factory (Dependency Inversion Principle)
     private final IPatientService patientService;
     private final IDoctorService doctorService;
+    private final IAppointmentService appointmentService;
     private final PatientController patientController;
     private final DoctorController doctorController;
+    private final AppointmentController appointmentController;
     
     /**
      * Default constructor that sets up dependencies via factory.
@@ -49,8 +54,10 @@ public class Main extends Application {
         // All dependencies created through factory - no concrete instantiation
         this.patientService = ServiceFactory.createPatientService();
         this.doctorService = ServiceFactory.createDoctorService();
+        this.appointmentService = ServiceFactory.createAppointmentService();
         this.patientController = ServiceFactory.createPatientController(patientService);
         this.doctorController = ServiceFactory.createDoctorController(doctorService);
+        this.appointmentController = ServiceFactory.createAppointmentController(appointmentService, patientService, doctorService);
     }
 
     public static void main(String[] args) {
@@ -71,6 +78,7 @@ public class Main extends Application {
         // Use builders to construct tabs (Open/Closed Principle)
         tabs.getTabs().add(new PatientTabBuilder(patientController).build());
         tabs.getTabs().add(new DoctorTabBuilder(doctorController).build());
+        tabs.getTabs().add(new AppointmentTabBuilder(appointmentController).build());
         
         stage.setScene(new Scene(tabs, 1200, 760));
         stage.show();
