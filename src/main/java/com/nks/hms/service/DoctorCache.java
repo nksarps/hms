@@ -1,7 +1,7 @@
 package com.nks.hms.service;
 
 import com.nks.hms.model.Doctor;
-import com.nks.hms.repository.DoctorRepository;
+import com.nks.hms.repository.IDoctorRepository;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -33,7 +33,7 @@ public class DoctorCache {
     private static final int MAX_SEARCH_CACHE_SIZE = 20;
     private static final long SEARCH_CACHE_TTL_MS = 60_000;
     
-    private final DoctorRepository repository;
+    private final IDoctorRepository repository;
     private final Map<Integer, Doctor> doctorCache;
     private final Map<String, CachedSearchResult> searchCache;
     
@@ -75,7 +75,7 @@ public class DoctorCache {
         }
     }
     
-    public DoctorCache(DoctorRepository repository) {
+    public DoctorCache(IDoctorRepository repository) {
         this.repository = repository;
         // LinkedHashMap with access-order (true) enables LRU behavior
         // When an entry is accessed, it moves to the end of the insertion order
