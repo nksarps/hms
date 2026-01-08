@@ -57,17 +57,6 @@ public class PatientRepository implements IPatientRepository {
     // Optimized: if searchTerm is numeric, performs direct ID lookup.
     @Override
     public List<Patient> find(String searchTerm, int limit, int offset) throws SQLException {
-        // Fast path: if search term is a pure integer, do direct ID lookup
-        if (searchTerm != null && !searchTerm.isBlank()) {
-            try {
-                int id = Integer.parseInt(searchTerm.trim());
-                Optional<Patient> patient = findById(id);
-                return patient.map(List::of).orElse(List.of());
-            } catch (NumberFormatException e) {
-                // Not a number, fall through to text search
-            }
-        }
-        
         return findByText(searchTerm, limit, offset);
     }
 
@@ -92,7 +81,7 @@ public class PatientRepository implements IPatientRepository {
             params.add(pattern);
             params.add(pattern);
         }
-        sql.append(" ORDER BY ID DESC LIMIT ? OFFSET ?");
+        sql.append(" LIMIT ? OFFSET ?");
 
         try (Connection conn = Database.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql.toString())) {
@@ -116,26 +105,13 @@ public class PatientRepository implements IPatientRepository {
     /**
      * Counts the total number of patients matching the given search term.
      * Uses the same filtering logic as find() to ensure consistency.
-     * Optimized to return 0 or 1 for numeric ID searches.
      * 
      * @param searchTerm Text to search for (can be null or empty to count all)
      * @return Total number of matching patient records
      * @throws SQLException If database query fails
      */
-    // Count rows matching the same filters used in find().
-    // Optimized: for numeric searches, returns 0 or 1 quickly.
     @Override
     public int count(String searchTerm) throws SQLException {
-        // Fast path: if search term is numeric, check if that ID exists
-        if (searchTerm != null && !searchTerm.isBlank()) {
-            try {
-                int id = Integer.parseInt(searchTerm.trim());
-                return findById(id).isPresent() ? 1 : 0;
-            } catch (NumberFormatException e) {
-                // Not a number, fall through to text count
-            }
-        }
-        
         return countByText(searchTerm);
     }
 

@@ -50,8 +50,7 @@ public class PatientCache {
      * Comparator options for sorting patient lists.
      */
     public enum SortBy {
-        ID_ASC(Comparator.comparing(Patient::getId)),
-        ID_DESC(Comparator.comparing(Patient::getId).reversed()),
+        NONE(Comparator.comparing(Patient::getId)),
         NAME_ASC(Comparator.comparing(Patient::getLastName)
                 .thenComparing(Patient::getFirstName)),
         NAME_DESC(Comparator.comparing(Patient::getLastName)

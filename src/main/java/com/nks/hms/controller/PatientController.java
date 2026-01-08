@@ -1,7 +1,6 @@
 package com.nks.hms.controller;
 
 import com.nks.hms.model.Patient;
-import com.nks.hms.model.VisitHistory;
 import com.nks.hms.service.IPatientService;
 import javafx.collections.FXCollections;
 import javafx.scene.control.*;
@@ -15,7 +14,7 @@ import java.util.List;
  * Depends on IPatientService abstraction (Dependency Inversion Principle).
  */
 public class PatientController {
-    private static final int PAGE_SIZE = 10;
+    private static final int PAGE_SIZE = 25;
     private final IPatientService patientService;
     
     public PatientController(IPatientService patientService) {
@@ -39,9 +38,9 @@ public class PatientController {
             List<Patient> patients = patientService.searchPatients(searchTerm, PAGE_SIZE, offset, sortBy);
             table.setItems(FXCollections.observableArrayList(patients));
             
-            String searchType = isNumeric(searchTerm) ? " (ID search)" : "";
+            String searchType = "";
             String cacheInfo = " | Cache: " + patientService.getCacheStats();
-            feedback.setText(total + " patients found" + searchType + cacheInfo);
+            feedback.setText(total + " patients found" + cacheInfo);
             feedback.setStyle("-fx-text-fill: #006400;");
         } catch (SQLException ex) {
             feedback.setText("Failed to load patients: " + ex.getMessage());
@@ -49,23 +48,7 @@ public class PatientController {
         }
     }
     
-    /**
-     * Loads visit history for a patient.
-     */
-    public void loadHistory(Patient patient, TableView<VisitHistory> historyTable, Label feedback) {
-        if (patient == null) {
-            historyTable.getItems().clear();
-            return;
-        }
-        try {
-            List<VisitHistory> visits = patientService.getVisitHistory(patient.getId());
-            historyTable.setItems(FXCollections.observableArrayList(visits));
-        } catch (SQLException ex) {
-            feedback.setText("Failed to load history: " + ex.getMessage());
-            feedback.setStyle("-fx-text-fill: #B00020;");
-        }
-    }
-    
+
     /**
      * Saves or updates a patient.
      */
@@ -111,7 +94,6 @@ public class PatientController {
      */
     public void deletePatient(TableView<Patient> table, Pagination pagination,
                              TextField searchField, ComboBox<String> sortCombo, Label feedback,
-                             TableView<VisitHistory> historyTable,
                              TextField firstNameField, TextField middleNameField, TextField lastNameField,
                              DatePicker dobPicker, TextField phoneField, TextField emailField,
                              TextArea addressArea) {
@@ -127,7 +109,6 @@ public class PatientController {
             feedback.setText("Patient deleted");
             feedback.setStyle("-fx-text-fill: #006400;");
             loadPatients(table, pagination, searchField.getText(), sortCombo.getValue(), feedback);
-            historyTable.getItems().clear();
             clearForm(firstNameField, middleNameField, lastNameField, dobPicker, phoneField, emailField, addressArea);
             table.getSelectionModel().clearSelection();
         } catch (SQLException ex) {
@@ -167,17 +148,5 @@ public class PatientController {
         phoneField.clear();
         emailField.clear();
         addressArea.clear();
-    }
-    
-    private boolean isNumeric(String str) {
-        if (str == null || str.isBlank()) {
-            return false;
-        }
-        try {
-            Integer.parseInt(str.trim());
-            return true;
-        } catch (NumberFormatException e) {
-            return false;
-        }
     }
 }
