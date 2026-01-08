@@ -89,14 +89,14 @@ public class PatientService implements IPatientService {
      * Converts UI sort string to cache sort enum.
      */
     private PatientCache.SortBy parseSortBy(String uiValue) {
-        if (uiValue == null) return PatientCache.SortBy.ID_DESC;
+        if (uiValue == null) return PatientCache.SortBy.NONE;
         return switch (uiValue) {
-            case "ID (Oldest)" -> PatientCache.SortBy.ID_ASC;
+            case "All" -> PatientCache.SortBy.NONE;
             case "Name (A-Z)" -> PatientCache.SortBy.NAME_ASC;
             case "Name (Z-A)" -> PatientCache.SortBy.NAME_DESC;
             case "DOB (Oldest)" -> PatientCache.SortBy.DOB_ASC;
             case "DOB (Newest)" -> PatientCache.SortBy.DOB_DESC;
-            default -> PatientCache.SortBy.ID_DESC;
+            default -> PatientCache.SortBy.NONE;
         };
     }
 }
