@@ -1,7 +1,7 @@
 package com.nks.hms.service;
 
 import com.nks.hms.model.Patient;
-import com.nks.hms.repository.PatientRepository;
+import com.nks.hms.repository.IPatientRepository;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -38,7 +38,7 @@ public class PatientCache {
     private static final int MAX_SEARCH_CACHE_SIZE = 20;
     private static final long SEARCH_CACHE_TTL_MS = 60_000; // 1 minute
     
-    private final PatientRepository repository;
+    private final IPatientRepository repository;
     
     /** LRU cache for individual patients by ID */
     private final Map<Integer, Patient> patientCache;
@@ -96,7 +96,7 @@ public class PatientCache {
      * 
      * @param repository The underlying patient repository for database access
      */
-    public PatientCache(PatientRepository repository) {
+    public PatientCache(IPatientRepository repository) {
         this.repository = repository;
         // LinkedHashMap with access-order (true) enables LRU behavior
         // When an entry is accessed via get(), it moves to the end of insertion order
@@ -260,7 +260,7 @@ public class PatientCache {
      * @throws SQLException If query fails
      */
     public List<com.nks.hms.model.VisitHistory> getHistory(int patientId) throws SQLException {
-        return repository.fetchHistory(patientId);
+        return repository.getVisitHistory(patientId);
     }
     
     /**
