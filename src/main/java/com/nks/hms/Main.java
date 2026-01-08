@@ -84,8 +84,8 @@ public class Main extends Application {
         
         // Use builders to construct tabs (Open/Closed Principle)
         tabs.getTabs().add(new PatientTabBuilder(patientController).build());
-        tabs.getTabs().add(new PrescriptionTabBuilder(prescriptionController).build());
         tabs.getTabs().add(new DoctorTabBuilder(doctorController).build());
+        tabs.getTabs().add(new PrescriptionTabBuilder(prescriptionController).build());
         tabs.getTabs().add(new AppointmentTabBuilder(appointmentController).build());
         
         stage.setScene(new Scene(tabs, 1200, 760));
