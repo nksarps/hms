@@ -4,16 +4,19 @@ import com.nks.hms.controller.AppointmentController;
 import com.nks.hms.controller.DoctorController;
 import com.nks.hms.controller.MedicalInventoryController;
 import com.nks.hms.controller.PatientController;
+import com.nks.hms.controller.PatientFeedbackController;
 import com.nks.hms.controller.PrescriptionController;
 import com.nks.hms.factory.ServiceFactory;
 import com.nks.hms.service.IAppointmentService;
 import com.nks.hms.service.IDoctorService;
 import com.nks.hms.service.IMedicalInventoryService;
+import com.nks.hms.service.IPatientFeedbackService;
 import com.nks.hms.service.IPatientService;
 import com.nks.hms.service.IPrescriptionService;
 import com.nks.hms.ui.AppointmentTabBuilder;
 import com.nks.hms.ui.DoctorTabBuilder;
 import com.nks.hms.ui.MedicalInventoryTabBuilder;
+import com.nks.hms.ui.PatientFeedbackTabBuilder;
 import com.nks.hms.ui.PatientTabBuilder;
 import com.nks.hms.ui.PrescriptionTabBuilder;
 import javafx.application.Application;
@@ -50,11 +53,13 @@ public class Main extends Application {
     private final IAppointmentService appointmentService;
     private final IPrescriptionService prescriptionService;
     private final IMedicalInventoryService inventoryService;
+    private final IPatientFeedbackService feedbackService;
     private final PatientController patientController;
     private final DoctorController doctorController;
     private final AppointmentController appointmentController;
     private final PrescriptionController prescriptionController;
     private final MedicalInventoryController inventoryController;
+    private final PatientFeedbackController feedbackController;
     
     /**
      * Default constructor that sets up dependencies via factory.
@@ -67,11 +72,13 @@ public class Main extends Application {
         this.appointmentService = ServiceFactory.createAppointmentService();
         this.prescriptionService = ServiceFactory.createPrescriptionService();
         this.inventoryService = ServiceFactory.createMedicalInventoryService();
+        this.feedbackService = ServiceFactory.createPatientFeedbackService();
         this.patientController = ServiceFactory.createPatientController(patientService);
         this.doctorController = ServiceFactory.createDoctorController(doctorService);
         this.appointmentController = ServiceFactory.createAppointmentController(appointmentService, patientService, doctorService);
         this.prescriptionController = ServiceFactory.createPrescriptionController(prescriptionService, patientService, doctorService);
         this.inventoryController = ServiceFactory.createMedicalInventoryController(inventoryService);
+        this.feedbackController = ServiceFactory.createPatientFeedbackController(feedbackService);
     }
 
     public static void main(String[] args) {
@@ -95,6 +102,7 @@ public class Main extends Application {
         tabs.getTabs().add(new PrescriptionTabBuilder(prescriptionController).build());
         tabs.getTabs().add(new AppointmentTabBuilder(appointmentController).build());
         tabs.getTabs().add(new MedicalInventoryTabBuilder(inventoryController).build());
+        tabs.getTabs().add(new PatientFeedbackTabBuilder(feedbackController).build());
         
         stage.setScene(new Scene(tabs, 1200, 760));
         stage.show();
