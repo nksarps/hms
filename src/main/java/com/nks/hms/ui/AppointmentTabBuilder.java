@@ -160,8 +160,8 @@ public class AppointmentTabBuilder {
     private ComboBox<String> buildSortComboBox() {
         ComboBox<String> sortCombo = new ComboBox<>();
         sortCombo.setItems(FXCollections.observableArrayList(
-            "All (Newest)", "Today", "Next 7 Days", "Next 30 Days"));
-        sortCombo.setValue("All (Newest)");
+            "All", "Today", "Next 7 Days", "Next 30 Days"));
+        sortCombo.setValue("All");
         sortCombo.setPrefWidth(130);
         return sortCombo;
     }

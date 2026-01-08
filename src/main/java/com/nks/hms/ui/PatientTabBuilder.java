@@ -2,7 +2,6 @@ package com.nks.hms.ui;
 
 import com.nks.hms.controller.PatientController;
 import com.nks.hms.model.Patient;
-import com.nks.hms.model.VisitHistory;
 import javafx.collections.FXCollections;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -39,9 +38,6 @@ public class PatientTabBuilder {
 
         // Configure main table
         TableView<Patient> table = buildPatientTable();
-        
-        // Configure visit history table
-        TableView<VisitHistory> historyTable = buildHistoryTable();
 
         // Search and sort controls
         TextField searchField = new TextField();
@@ -51,9 +47,6 @@ public class PatientTabBuilder {
         HBox searchBox = new HBox(8, new Label("Search:"), searchField, searchBtn, 
                 new Label("Sort:"), sortCombo);
         searchBox.setAlignment(Pos.CENTER_LEFT);
-
-        Pagination pagination = new Pagination(1, 0);
-        pagination.setMaxPageIndicatorCount(10);
 
         Label feedback = new Label();
         feedback.setStyle("-fx-text-fill: #006400;");
@@ -68,6 +61,11 @@ public class PatientTabBuilder {
         TextField emailField = (TextField) form.getChildren().get(11);
         TextArea addressArea = (TextArea) form.getChildren().get(13);
 
+        // Load initial patient data into table
+        Pagination pagination = new Pagination(1, 0);
+        pagination.setMaxPageIndicatorCount(10);
+        controller.loadPatients(table, pagination, "", sortCombo.getValue(), feedback);
+
         Button saveBtn = new Button("Save / Update");
         Button deleteBtn = new Button("Delete");
         Button clearBtn = new Button("Clear");
@@ -78,9 +76,8 @@ public class PatientTabBuilder {
         rightPane.setPadding(new Insets(10));
         rightPane.setPrefWidth(450);
 
-        VBox leftPane = new VBox(10, searchBox, table, pagination, new Label("Recent Visits"), historyTable);
+        VBox leftPane = new VBox(10, searchBox, table, pagination);
         VBox.setVgrow(table, Priority.ALWAYS);
-        VBox.setVgrow(historyTable, Priority.SOMETIMES);
         leftPane.setPadding(new Insets(10));
 
         BorderPane layout = new BorderPane();
@@ -89,12 +86,9 @@ public class PatientTabBuilder {
         tab.setContent(layout);
 
         // Wire up event handlers
-        wireEventHandlers(table, historyTable, pagination, searchField, searchBtn, sortCombo, 
+        wireEventHandlers(table, pagination, searchField, searchBtn, sortCombo, 
                          feedback, saveBtn, deleteBtn, clearBtn, firstNameField, middleNameField, 
                          lastNameField, dobPicker, phoneField, emailField, addressArea);
-
-        // Initial load
-        controller.loadPatients(table, pagination, "", sortCombo.getValue(), feedback);
         
         return tab;
     }
@@ -120,29 +114,13 @@ public class PatientTabBuilder {
         return table;
     }
     
-    private TableView<VisitHistory> buildHistoryTable() {
-        TableView<VisitHistory> table = new TableView<>();
-        table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
-        
-        TableColumn<VisitHistory, String> doctorCol = new TableColumn<>("Doctor");
-        doctorCol.setCellValueFactory(new PropertyValueFactory<>("doctorName"));
-        TableColumn<VisitHistory, LocalDate> visitDateCol = new TableColumn<>("Visit Date");
-        visitDateCol.setCellValueFactory(new PropertyValueFactory<>("visitDate"));
-        TableColumn<VisitHistory, String> reasonCol = new TableColumn<>("Reason");
-        reasonCol.setCellValueFactory(new PropertyValueFactory<>("reason"));
-        TableColumn<VisitHistory, String> notesCol = new TableColumn<>("Notes");
-        notesCol.setCellValueFactory(new PropertyValueFactory<>("notes"));
-        
-        table.getColumns().addAll(doctorCol, visitDateCol, reasonCol, notesCol);
-        return table;
-    }
+
     
     private ComboBox<String> buildSortComboBox() {
         ComboBox<String> sortCombo = new ComboBox<>();
         sortCombo.setItems(FXCollections.observableArrayList(
-                "ID (Newest)", "ID (Oldest)", "Name (A-Z)", "Name (Z-A)", 
-                "DOB (Oldest)", "DOB (Newest)"));
-        sortCombo.setValue("ID (Newest)");
+                "All", "Name (A-Z)", "Name (Z-A)", "DOB (Oldest)", "DOB (Newest)"));
+        sortCombo.setValue("All");
         sortCombo.setPrefWidth(130);
         return sortCombo;
     }
@@ -171,7 +149,7 @@ public class PatientTabBuilder {
         return form;
     }
     
-    private void wireEventHandlers(TableView<Patient> table, TableView<VisitHistory> historyTable,
+    private void wireEventHandlers(TableView<Patient> table,
                                    Pagination pagination, TextField searchField, Button searchBtn,
                                    ComboBox<String> sortCombo, Label feedback, Button saveBtn,
                                    Button deleteBtn, Button clearBtn, TextField firstNameField,
@@ -201,7 +179,6 @@ public class PatientTabBuilder {
         // Table selection handler
         table.getSelectionModel().selectedItemProperty().addListener((obs, old, patient) -> {
             controller.populateForm(patient, firstNameField, middleNameField, lastNameField, dobPicker, phoneField, emailField, addressArea);
-            controller.loadHistory(patient, historyTable, feedback);
         });
 
         // Action button handlers
@@ -209,12 +186,11 @@ public class PatientTabBuilder {
                 firstNameField, middleNameField, lastNameField, dobPicker, phoneField, emailField, addressArea));
         
         deleteBtn.setOnAction(e -> controller.deletePatient(table, pagination, searchField, sortCombo, feedback, 
-                historyTable, firstNameField, middleNameField, lastNameField, dobPicker, phoneField, emailField, addressArea));
+                firstNameField, middleNameField, lastNameField, dobPicker, phoneField, emailField, addressArea));
         
         clearBtn.setOnAction(e -> {
             controller.clearForm(firstNameField, middleNameField, lastNameField, dobPicker, phoneField, emailField, addressArea);
             table.getSelectionModel().clearSelection();
-            historyTable.getItems().clear();
             feedback.setText("");
         });
     }
