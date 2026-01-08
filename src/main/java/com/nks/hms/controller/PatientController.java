@@ -5,7 +5,6 @@ import com.nks.hms.service.IPatientService;
 import javafx.collections.FXCollections;
 import javafx.scene.control.*;
 import java.sql.SQLException;
-import java.time.LocalDate;
 import java.util.List;
 
 /**
@@ -38,7 +37,6 @@ public class PatientController {
             List<Patient> patients = patientService.searchPatients(searchTerm, PAGE_SIZE, offset, sortBy);
             table.setItems(FXCollections.observableArrayList(patients));
             
-            String searchType = "";
             String cacheInfo = " | Cache: " + patientService.getCacheStats();
             feedback.setText(total + " patients found" + cacheInfo);
             feedback.setStyle("-fx-text-fill: #006400;");

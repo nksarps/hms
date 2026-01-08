@@ -2,31 +2,38 @@ package com.nks.hms.factory;
 
 import com.nks.hms.controller.AppointmentController;
 import com.nks.hms.controller.DoctorController;
+import com.nks.hms.controller.MedicalInventoryController;
 import com.nks.hms.controller.PatientController;
 import com.nks.hms.controller.PrescriptionController;
 import com.nks.hms.repository.AppointmentRepository;
 import com.nks.hms.repository.DoctorRepository;
 import com.nks.hms.repository.IAppointmentRepository;
 import com.nks.hms.repository.IDoctorRepository;
+import com.nks.hms.repository.IMedicalInventoryRepository;
 import com.nks.hms.repository.IPatientRepository;
 import com.nks.hms.repository.IPrescriptionRepository;
+import com.nks.hms.repository.MedicalInventoryRepository;
 import com.nks.hms.repository.PatientRepository;
 import com.nks.hms.repository.PrescriptionRepository;
 import com.nks.hms.service.AppointmentService;
 import com.nks.hms.service.DoctorService;
 import com.nks.hms.service.IAppointmentService;
 import com.nks.hms.service.IDoctorService;
+import com.nks.hms.service.IMedicalInventoryService;
 import com.nks.hms.service.IPatientService;
 import com.nks.hms.service.IPrescriptionService;
+import com.nks.hms.service.MedicalInventoryService;
 import com.nks.hms.service.PatientService;
 import com.nks.hms.service.PrescriptionService;
 import com.nks.hms.validation.AppointmentValidator;
 import com.nks.hms.validation.DoctorValidator;
 import com.nks.hms.validation.IValidator;
+import com.nks.hms.validation.MedicalInventoryValidator;
 import com.nks.hms.validation.PatientValidator;
 import com.nks.hms.validation.PrescriptionValidator;
 import com.nks.hms.model.Appointment;
 import com.nks.hms.model.Doctor;
+import com.nks.hms.model.MedicalInventory;
 import com.nks.hms.model.Patient;
 import com.nks.hms.model.Prescription;
 
@@ -139,6 +146,27 @@ public class ServiceFactory {
         return new PrescriptionController(prescriptionService, patientService, doctorService);
     }
     
+    /**
+     * Creates a configured medical inventory service with all dependencies.
+     * 
+     * @return Fully configured medical inventory service
+     */
+    public static IMedicalInventoryService createMedicalInventoryService() {
+        IMedicalInventoryRepository repository = createMedicalInventoryRepository();
+        IValidator<MedicalInventory> validator = createMedicalInventoryValidator();
+        return new MedicalInventoryService(repository, validator);
+    }
+    
+    /**
+     * Creates a medical inventory controller with injected service.
+     * 
+     * @param inventoryService The medical inventory service to inject
+     * @return Configured medical inventory controller
+     */
+    public static MedicalInventoryController createMedicalInventoryController(IMedicalInventoryService inventoryService) {
+        return new MedicalInventoryController(inventoryService);
+    }
+    
     // Private factory methods for internal dependencies
     
     private static IPatientRepository createPatientRepository() {
@@ -157,6 +185,10 @@ public class ServiceFactory {
         return new PrescriptionRepository();
     }
     
+    private static IMedicalInventoryRepository createMedicalInventoryRepository() {
+        return new MedicalInventoryRepository();
+    }
+    
     private static IValidator<Patient> createPatientValidator() {
         return new PatientValidator();
     }
@@ -171,5 +203,9 @@ public class ServiceFactory {
     
     private static IValidator<Prescription> createPrescriptionValidator() {
         return new PrescriptionValidator();
+    }
+    
+    private static IValidator<MedicalInventory> createMedicalInventoryValidator() {
+        return new MedicalInventoryValidator();
     }
 }
