@@ -30,7 +30,7 @@ import java.util.Optional;
  * @see com.nks.hms.db.Database
  */
 // JDBC CRUD for doctors with simple text search and pagination.
-public class DoctorRepository {
+public class DoctorRepository implements IDoctorRepository {
     private static final String BASE_SELECT = "SELECT ID, FirstName, MiddleName, LastName, Email, PhoneNumber FROM doctor";
 
     /**
@@ -46,6 +46,7 @@ public class DoctorRepository {
      */
     // Case-insensitive search across name/phone/email; ordered by newest first.
     // Optimized: if searchTerm is numeric, performs direct ID lookup.
+    @Override
     public List<Doctor> find(String searchTerm, int limit, int offset) throws SQLException {
         // Fast path: if search term is a pure integer, do direct ID lookup
         if (searchTerm != null && !searchTerm.isBlank()) {
@@ -114,6 +115,7 @@ public class DoctorRepository {
      */
     // Count rows matching the search filters used in find().
     // Optimized: for numeric searches, returns 0 or 1 quickly.
+    @Override
     public int count(String searchTerm) throws SQLException {
         // Fast path: if search term is numeric, check if that ID exists
         if (searchTerm != null && !searchTerm.isBlank()) {
@@ -171,6 +173,7 @@ public class DoctorRepository {
      * @throws SQLException If query fails
      */
     // Fetch a single doctor by ID.
+    @Override
     public Optional<Doctor> findById(int id) throws SQLException {
         String sql = BASE_SELECT + " WHERE ID = ?";
         try (Connection conn = Database.getConnection();
@@ -194,6 +197,7 @@ public class DoctorRepository {
      * @throws SQLException If insert fails
      */
     // Insert a new doctor and return generated key.
+    @Override
     public int insert(Doctor doctor) throws SQLException {
         String sql = "INSERT INTO doctor (FirstName, MiddleName, LastName, Email, PhoneNumber, DepartmentID) VALUES (?, ?, ?, ?, ?, ?)";
         try (Connection conn = Database.getConnection();
@@ -226,6 +230,7 @@ public class DoctorRepository {
      * @throws SQLException If update fails
      */
     // Update an existing doctor record.
+    @Override
     public void update(Doctor doctor) throws SQLException {
         String sql = "UPDATE doctor SET FirstName = ?, MiddleName = ?, LastName = ?, Email = ?, PhoneNumber = ?, DepartmentID = ? WHERE ID = ?";
         try (Connection conn = Database.getConnection();
@@ -253,6 +258,7 @@ public class DoctorRepository {
      * @throws SQLException If delete fails (e.g., foreign key constraint)
      */
     // Delete a doctor by ID.
+    @Override
     public void delete(int id) throws SQLException {
         String sql = "DELETE FROM doctor WHERE ID = ?";
         try (Connection conn = Database.getConnection();
