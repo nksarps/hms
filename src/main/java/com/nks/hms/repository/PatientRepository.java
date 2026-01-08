@@ -37,7 +37,7 @@ import java.util.Optional;
  * @see com.nks.hms.db.Database
  */
 // Thin JDBC repository with basic search, pagination, and history lookups.
-public class PatientRepository {
+public class PatientRepository implements IPatientRepository {
     private static final String BASE_SELECT = "SELECT ID, FirstName, MiddleName, LastName, Email, PhoneNumber, DateOfBirth, Address FROM patient";
 
     /**
@@ -55,6 +55,7 @@ public class PatientRepository {
      */
     // Case-insensitive search across name/phone/email; ordered by newest first.
     // Optimized: if searchTerm is numeric, performs direct ID lookup.
+    @Override
     public List<Patient> find(String searchTerm, int limit, int offset) throws SQLException {
         // Fast path: if search term is a pure integer, do direct ID lookup
         if (searchTerm != null && !searchTerm.isBlank()) {
@@ -123,6 +124,7 @@ public class PatientRepository {
      */
     // Count rows matching the same filters used in find().
     // Optimized: for numeric searches, returns 0 or 1 quickly.
+    @Override
     public int count(String searchTerm) throws SQLException {
         // Fast path: if search term is numeric, check if that ID exists
         if (searchTerm != null && !searchTerm.isBlank()) {
@@ -180,6 +182,7 @@ public class PatientRepository {
      * @throws SQLException If database query fails
      */
     // Fetch a single patient by ID.
+    @Override
     public Optional<Patient> findById(int id) throws SQLException {
         String sql = BASE_SELECT + " WHERE ID = ?";
         try (Connection conn = Database.getConnection();
@@ -203,6 +206,7 @@ public class PatientRepository {
      * @throws SQLException If insert fails
      */
     // Insert a new patient and return generated key.
+    @Override
     public int insert(Patient patient) throws SQLException {
         String sql = "INSERT INTO patient (FirstName, MiddleName, LastName, Email, PhoneNumber, DateOfBirth, Address) VALUES (?, ?, ?, ?, ?, ?, ?)";
         try (Connection conn = Database.getConnection();
@@ -226,6 +230,7 @@ public class PatientRepository {
      * @throws SQLException If update fails or ID doesn't exist
      */
     // Update an existing patient record.
+    @Override
     public void update(Patient patient) throws SQLException {
         String sql = "UPDATE patient SET FirstName = ?, MiddleName = ?, LastName = ?, Email = ?, PhoneNumber = ?, DateOfBirth = ?, Address = ? WHERE ID = ?";
         try (Connection conn = Database.getConnection();
@@ -244,6 +249,7 @@ public class PatientRepository {
      * @throws SQLException If delete fails (e.g., foreign key constraint)
      */
     // Delete a patient by ID.
+    @Override
     public void delete(int id) throws SQLException {
         String sql = "DELETE FROM patient WHERE ID = ?";
         try (Connection conn = Database.getConnection();
@@ -262,7 +268,8 @@ public class PatientRepository {
      * @throws SQLException If query fails
      */
     // Retrieve recent appointment history for display-only purposes.
-    public List<VisitHistory> fetchHistory(int patientId) throws SQLException {
+    @Override
+    public List<VisitHistory> getVisitHistory(int patientId) throws SQLException {
         String sql = "SELECT d.FirstName, d.LastName, a.AppointmentDate, a.Reason, '' as Notes "
                 + "FROM appointment a "
                 + "JOIN doctor d ON a.DoctorID = d.ID "
