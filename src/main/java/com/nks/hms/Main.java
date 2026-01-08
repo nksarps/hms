@@ -3,13 +3,16 @@ package com.nks.hms;
 import com.nks.hms.controller.AppointmentController;
 import com.nks.hms.controller.DoctorController;
 import com.nks.hms.controller.PatientController;
+import com.nks.hms.controller.PrescriptionController;
 import com.nks.hms.factory.ServiceFactory;
 import com.nks.hms.service.IAppointmentService;
 import com.nks.hms.service.IDoctorService;
 import com.nks.hms.service.IPatientService;
+import com.nks.hms.service.IPrescriptionService;
 import com.nks.hms.ui.AppointmentTabBuilder;
 import com.nks.hms.ui.DoctorTabBuilder;
 import com.nks.hms.ui.PatientTabBuilder;
+import com.nks.hms.ui.PrescriptionTabBuilder;
 import javafx.application.Application;
 import javafx.scene.Scene;
 import javafx.scene.control.TabPane;
@@ -42,9 +45,11 @@ public class Main extends Application {
     private final IPatientService patientService;
     private final IDoctorService doctorService;
     private final IAppointmentService appointmentService;
+    private final IPrescriptionService prescriptionService;
     private final PatientController patientController;
     private final DoctorController doctorController;
     private final AppointmentController appointmentController;
+    private final PrescriptionController prescriptionController;
     
     /**
      * Default constructor that sets up dependencies via factory.
@@ -55,9 +60,11 @@ public class Main extends Application {
         this.patientService = ServiceFactory.createPatientService();
         this.doctorService = ServiceFactory.createDoctorService();
         this.appointmentService = ServiceFactory.createAppointmentService();
+        this.prescriptionService = ServiceFactory.createPrescriptionService();
         this.patientController = ServiceFactory.createPatientController(patientService);
         this.doctorController = ServiceFactory.createDoctorController(doctorService);
         this.appointmentController = ServiceFactory.createAppointmentController(appointmentService, patientService, doctorService);
+        this.prescriptionController = ServiceFactory.createPrescriptionController(prescriptionService, patientService, doctorService);
     }
 
     public static void main(String[] args) {
@@ -77,6 +84,7 @@ public class Main extends Application {
         
         // Use builders to construct tabs (Open/Closed Principle)
         tabs.getTabs().add(new PatientTabBuilder(patientController).build());
+        tabs.getTabs().add(new PrescriptionTabBuilder(prescriptionController).build());
         tabs.getTabs().add(new DoctorTabBuilder(doctorController).build());
         tabs.getTabs().add(new AppointmentTabBuilder(appointmentController).build());
         

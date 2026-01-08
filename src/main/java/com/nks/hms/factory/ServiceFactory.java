@@ -3,25 +3,32 @@ package com.nks.hms.factory;
 import com.nks.hms.controller.AppointmentController;
 import com.nks.hms.controller.DoctorController;
 import com.nks.hms.controller.PatientController;
+import com.nks.hms.controller.PrescriptionController;
 import com.nks.hms.repository.AppointmentRepository;
 import com.nks.hms.repository.DoctorRepository;
 import com.nks.hms.repository.IAppointmentRepository;
 import com.nks.hms.repository.IDoctorRepository;
 import com.nks.hms.repository.IPatientRepository;
+import com.nks.hms.repository.IPrescriptionRepository;
 import com.nks.hms.repository.PatientRepository;
+import com.nks.hms.repository.PrescriptionRepository;
 import com.nks.hms.service.AppointmentService;
 import com.nks.hms.service.DoctorService;
 import com.nks.hms.service.IAppointmentService;
 import com.nks.hms.service.IDoctorService;
 import com.nks.hms.service.IPatientService;
+import com.nks.hms.service.IPrescriptionService;
 import com.nks.hms.service.PatientService;
+import com.nks.hms.service.PrescriptionService;
 import com.nks.hms.validation.AppointmentValidator;
 import com.nks.hms.validation.DoctorValidator;
 import com.nks.hms.validation.IValidator;
 import com.nks.hms.validation.PatientValidator;
+import com.nks.hms.validation.PrescriptionValidator;
 import com.nks.hms.model.Appointment;
 import com.nks.hms.model.Doctor;
 import com.nks.hms.model.Patient;
+import com.nks.hms.model.Prescription;
 
 /**
  * Factory for creating service layer dependencies.
@@ -107,6 +114,31 @@ public class ServiceFactory {
         return new DoctorController(doctorService);
     }
     
+    /**
+     * Creates a configured prescription service with all dependencies.
+     * 
+     * @return Fully configured prescription service
+     */
+    public static IPrescriptionService createPrescriptionService() {
+        IPrescriptionRepository repository = createPrescriptionRepository();
+        IValidator<Prescription> validator = createPrescriptionValidator();
+        return new PrescriptionService(repository, validator);
+    }
+    
+    /**
+     * Creates a prescription controller with injected services.
+     * 
+     * @param prescriptionService The prescription service to inject
+     * @param patientService The patient service to inject
+     * @param doctorService The doctor service to inject
+     * @return Configured prescription controller
+     */
+    public static PrescriptionController createPrescriptionController(IPrescriptionService prescriptionService,
+                                                                      IPatientService patientService,
+                                                                      IDoctorService doctorService) {
+        return new PrescriptionController(prescriptionService, patientService, doctorService);
+    }
+    
     // Private factory methods for internal dependencies
     
     private static IPatientRepository createPatientRepository() {
@@ -121,6 +153,10 @@ public class ServiceFactory {
         return new AppointmentRepository();
     }
     
+    private static IPrescriptionRepository createPrescriptionRepository() {
+        return new PrescriptionRepository();
+    }
+    
     private static IValidator<Patient> createPatientValidator() {
         return new PatientValidator();
     }
@@ -131,5 +167,9 @@ public class ServiceFactory {
     
     private static IValidator<Appointment> createAppointmentValidator() {
         return new AppointmentValidator();
+    }
+    
+    private static IValidator<Prescription> createPrescriptionValidator() {
+        return new PrescriptionValidator();
     }
 }
