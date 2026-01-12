@@ -18,9 +18,7 @@ import java.util.List;
  * Depends on IAppointmentService abstraction (Dependency Inversion Principle).
  */
 public class AppointmentController {
-    private static final int MIN_PAGE_SIZE = 10;
-    private static final int ESTIMATED_ROW_HEIGHT = 25; // pixels
-    private int currentPageSize = MIN_PAGE_SIZE;
+    private static final int PAGE_SIZE = 25;
     private final IAppointmentService appointmentService;
     private final IPatientService patientService;
     private final IDoctorService doctorService;
@@ -32,42 +30,20 @@ public class AppointmentController {
     }
     
     /**
-     * Sets the page size dynamically based on available table height.
-     * 
-     * @param availableHeight Height available for the table in pixels
-     */
-    public void setDynamicPageSize(double availableHeight) {
-        // Calculate rows that can fit: (availableHeight - header height) / row height
-        int calculatedSize = Math.max(MIN_PAGE_SIZE, (int) ((availableHeight - 30) / ESTIMATED_ROW_HEIGHT));
-        this.currentPageSize = calculatedSize;
-    }
-    
-    /**
-     * Gets the current page size.
-     * 
-     * @return Current page size for pagination
-     */
-    public int getPageSize() {
-        return currentPageSize;
-    }
-    
-    /**
      * Loads appointments into table with pagination and sorting.
      */
     public void loadAppointments(TableView<Appointment> table, Pagination pagination, 
                                 String searchTerm, String sortBy, Label feedback) {
         try {
-            int pageSize = getPageSize();
-            String resolvedSort = sortBy;
-            int total = appointmentService.countAppointments(searchTerm, resolvedSort);
-            int pages = Math.max(1, (int) Math.ceil(total / (double) pageSize));
+            int total = appointmentService.countAppointments(searchTerm, sortBy);
+            int pages = Math.max(1, (int) Math.ceil(total / (double) PAGE_SIZE));
             pagination.setPageCount(pages);
             
             int current = Math.min(pagination.getCurrentPageIndex(), pages - 1);
             pagination.setCurrentPageIndex(current);
-            int offset = current * pageSize;
+            int offset = current * PAGE_SIZE;
             
-            List<Appointment> appointments = appointmentService.searchAppointments(searchTerm, pageSize, offset, resolvedSort);
+            List<Appointment> appointments = appointmentService.searchAppointments(searchTerm, PAGE_SIZE, offset, sortBy);
             table.setItems(FXCollections.observableArrayList(appointments));
             
             String searchType = isNumeric(searchTerm) ? " (ID search)" : "";

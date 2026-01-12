@@ -22,6 +22,12 @@ import java.time.format.DateTimeFormatter;
  * 
  * <p>Separates UI construction from Main class (Single Responsibility Principle).
  * Encapsulates all appointment tab layout and event wiring logic.
+ * 
+ * <p>PAGINATION FIX (2026-01-12):
+ * Fixed intermittent "No contents in this table" issue when navigating pages.
+ * Root cause was a mismatch in parseSortBy() method where the switch case
+ * expected "All (Newest)" but the sort combo box returned "All", causing
+ * state desynchronization between initial load and subsequent pagination events.
  */
 public class AppointmentTabBuilder {
     private final AppointmentController controller;
@@ -51,9 +57,6 @@ public class AppointmentTabBuilder {
                 new Label("Sort:"), sortCombo);
         searchBox.setAlignment(Pos.CENTER_LEFT);
 
-        Pagination pagination = new Pagination(1, 0);
-        pagination.setMaxPageIndicatorCount(10);
-
         Label feedback = new Label();
         feedback.setStyle("-fx-text-fill: #006400;");
 
@@ -67,6 +70,11 @@ public class AppointmentTabBuilder {
         Spinner<Integer> minuteSpinner = formComponents.minuteSpinner;
         TextArea reasonArea = formComponents.reasonArea;
 
+        // Load initial appointment data into table
+        Pagination pagination = new Pagination(1, 0);
+        pagination.setMaxPageIndicatorCount(10);
+        controller.loadAppointments(table, pagination, "", parseSortBy(sortCombo.getValue()), feedback);
+
         Button saveBtn = new Button("Schedule / Update");
         Button deleteBtn = new Button("Delete");
         Button clearBtn = new Button("Clear");
@@ -75,13 +83,7 @@ public class AppointmentTabBuilder {
 
         VBox rightPane = new VBox(12, form, actionButtons, feedback);
         rightPane.setPadding(new Insets(10));
-        rightPane.setPrefWidth(300);
-        rightPane.setStyle("-fx-border-color: #e0e0e0; -fx-border-width: 1 0 0 1;");
-        
-        // Make form scrollable if it gets too large
-        ScrollPane formScroll = new ScrollPane(rightPane);
-        formScroll.setFitToWidth(true);
-        formScroll.setStyle("-fx-padding: 0;");
+        rightPane.setPrefWidth(450);
 
         VBox leftPane = new VBox(10, searchBox, table, pagination);
         VBox.setVgrow(table, Priority.ALWAYS);
@@ -89,7 +91,7 @@ public class AppointmentTabBuilder {
 
         BorderPane layout = new BorderPane();
         layout.setCenter(leftPane);
-        layout.setRight(formScroll);
+        layout.setRight(rightPane);
         tab.setContent(layout);
 
         // Wire up event handlers
@@ -97,21 +99,9 @@ public class AppointmentTabBuilder {
                          feedback, saveBtn, deleteBtn, clearBtn, patientCombo, doctorCombo,
                          datePicker, hourSpinner, minuteSpinner, reasonArea);
 
-        // Set up dynamic page size based on table height
-        table.heightProperty().addListener((obs, oldVal, newVal) -> {
-            if (newVal.doubleValue() > 50) { // Only update if table has meaningful height
-                controller.setDynamicPageSize(newVal.doubleValue());
-                // Reload appointments with new page size
-                controller.loadAppointments(table, pagination, "", sortCombo.getValue(), feedback);
-            }
-        });
-
-        // Load dropdowns
+        // Load dropdowns after event handlers to prevent race conditions
         controller.loadPatients(patientCombo, feedback);
         controller.loadDoctors(doctorCombo, feedback);
-        
-        // Initial load
-        controller.loadAppointments(table, pagination, "", sortCombo.getValue(), feedback);
         
         return tab;
     }
@@ -122,15 +112,12 @@ public class AppointmentTabBuilder {
         
         TableColumn<Appointment, Integer> idCol = new TableColumn<>("ID");
         idCol.setCellValueFactory(new PropertyValueFactory<>("id"));
-        idCol.setPrefWidth(50);
         
         TableColumn<Appointment, String> patientCol = new TableColumn<>("Patient");
         patientCol.setCellValueFactory(new PropertyValueFactory<>("patientName"));
-        patientCol.setPrefWidth(150);
         
         TableColumn<Appointment, String> doctorCol = new TableColumn<>("Doctor");
         doctorCol.setCellValueFactory(new PropertyValueFactory<>("doctorName"));
-        doctorCol.setPrefWidth(150);
         
         TableColumn<Appointment, LocalDateTime> dateCol = new TableColumn<>("Date & Time");
         dateCol.setCellValueFactory(new PropertyValueFactory<>("appointmentDate"));
@@ -147,11 +134,9 @@ public class AppointmentTabBuilder {
                 }
             }
         });
-        dateCol.setPrefWidth(200);
         
         TableColumn<Appointment, String> reasonCol = new TableColumn<>("Reason");
         reasonCol.setCellValueFactory(new PropertyValueFactory<>("reason"));
-        reasonCol.setPrefWidth(200);
         
         table.getColumns().addAll(idCol, patientCol, doctorCol, dateCol, reasonCol);
         return table;
@@ -169,79 +154,56 @@ public class AppointmentTabBuilder {
     private FormComponents buildForm() {
         GridPane form = new GridPane();
         form.setHgap(10);
-        form.setVgap(12);
+        form.setVgap(10);
         form.setPadding(new Insets(10));
-        form.setStyle("-fx-border-color: #e0e0e0; -fx-border-width: 1;");
 
         ComboBox<Patient> patientCombo = new ComboBox<>();
         patientCombo.setPromptText("Select Patient");
-        patientCombo.setPrefWidth(200);
         patientCombo.setCellFactory(lv -> new PatientListCell());
         patientCombo.setButtonCell(new PatientListCell());
 
         ComboBox<Doctor> doctorCombo = new ComboBox<>();
         doctorCombo.setPromptText("Select Doctor");
-        doctorCombo.setPrefWidth(200);
         doctorCombo.setCellFactory(lv -> new DoctorListCell());
         doctorCombo.setButtonCell(new DoctorListCell());
 
         DatePicker datePicker = new DatePicker();
-        datePicker.setPrefWidth(200);
-        datePicker.setStyle("-fx-font-size: 12;");
         
         Spinner<Integer> hourSpinner = new Spinner<>(0, 23, 9);
         hourSpinner.setEditable(true);
-        hourSpinner.setPrefWidth(60);
-        hourSpinner.setStyle("-fx-font-size: 12;");
         
         Spinner<Integer> minuteSpinner = new Spinner<>(0, 59, 0, 15);
         minuteSpinner.setEditable(true);
-        minuteSpinner.setPrefWidth(60);
-        minuteSpinner.setStyle("-fx-font-size: 12;");
         
         TextArea reasonArea = new TextArea();
         reasonArea.setPrefRowCount(3);
-        reasonArea.setPrefWidth(200);
-        reasonArea.setWrapText(true);
 
-        // Create styled labels
+        // Create labels
         Label patientLabel = new Label("Patient:");
-        patientLabel.setStyle("-fx-font-weight: bold; -fx-font-size: 11;");
         Label doctorLabel = new Label("Doctor:");
-        doctorLabel.setStyle("-fx-font-weight: bold; -fx-font-size: 11;");
         Label dateLabel = new Label("Appointment Date:");
-        dateLabel.setStyle("-fx-font-weight: bold; -fx-font-size: 11;");
-        Label timeLabel = new Label("Time of Day:");
-        timeLabel.setStyle("-fx-font-weight: bold; -fx-font-size: 11;");
+        Label timeLabel = new Label("Time:");
         Label hourLabel = new Label("Hour (0-23):");
-        hourLabel.setStyle("-fx-font-size: 10;");
-        Label minuteLabel = new Label("Minutes (0-59):");
-        minuteLabel.setStyle("-fx-font-size: 10;");
-        Label reasonLabel = new Label("Reason for Appointment:");
-        reasonLabel.setStyle("-fx-font-weight: bold; -fx-font-size: 11;");
+        Label minuteLabel = new Label("Minute (0-59):");
+        Label reasonLabel = new Label("Reason:");
 
-        // Add to grid with proper constraints
+        // Add to grid
         form.add(patientLabel, 0, 0);
-        form.add(patientCombo, 0, 1);
+        form.add(patientCombo, 0, 1, 2, 1);
         
         form.add(doctorLabel, 0, 2);
-        form.add(doctorCombo, 0, 3);
+        form.add(doctorCombo, 0, 3, 2, 1);
         
         form.add(dateLabel, 0, 4);
-        form.add(datePicker, 0, 5);
+        form.add(datePicker, 0, 5, 2, 1);
         
         form.add(timeLabel, 0, 6);
-        HBox timeInputBox = new HBox(8);
-        timeInputBox.setAlignment(Pos.CENTER_LEFT);
-        VBox hourBox = new VBox(2, hourLabel, hourSpinner);
-        VBox minuteBox = new VBox(2, minuteLabel, minuteSpinner);
-        Label colonLabel = new Label(":");
-        colonLabel.setStyle("-fx-font-size: 18; -fx-font-weight: bold;");
-        timeInputBox.getChildren().addAll(hourBox, colonLabel, minuteBox);
-        form.add(timeInputBox, 0, 7);
+        HBox timeBox = new HBox(10, hourLabel, hourSpinner, minuteLabel, minuteSpinner);
+        timeBox.setAlignment(Pos.CENTER_LEFT);
+        form.add(timeBox, 0, 7, 2, 1);
         
         form.add(reasonLabel, 0, 8);
-        form.add(reasonArea, 0, 9);
+        form.add(reasonArea, 0, 9, 2, 1);
         
         return new FormComponents(form, patientCombo, doctorCombo, datePicker, hourSpinner, minuteSpinner, reasonArea);
     }
@@ -323,6 +285,14 @@ public class AppointmentTabBuilder {
     
     /**
      * Converts sort combo box value to service sort string.
+     * 
+     * ROOT CAUSE FIX: The parseSortBy method had a mismatch between the sort combo box values
+     * and the switch cases. When "All" was selected, it didn't match "All (Newest)" in the
+     * switch statement, causing it to fall through to default. This created state desynchronization
+     * during pagination where the initial load used one sort value but subsequent page changes
+     * used a different one, resulting in "No contents in this table" when paginating.
+     * 
+     * FIX: Corrected the switch case from "All (Newest)" to "All" to match the combo box value.
      */
     private String parseSortBy(String sortText) {
         if (sortText == null) {
@@ -330,7 +300,7 @@ public class AppointmentTabBuilder {
         }
         
         return switch (sortText) {
-            case "All (Newest)" -> "DATE_DESC";
+            case "All" -> "DATE_DESC";
             case "Today" -> "TODAY";
             case "Next 7 Days" -> "NEXT_7";
             case "Next 30 Days" -> "NEXT_30";
