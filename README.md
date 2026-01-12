@@ -58,11 +58,22 @@ The application features a modern tabbed interface for managing hospital data:
 
 ### Screenshots
 
+#### Patients Tab
 ![Patients Tab](docs/screenshots/patients-tab.png)
+
+#### Doctors Tab
 ![Doctors Tab](docs/screenshots/doctors-tab.png)
+
+#### Appointments Tab
 ![Appointments Tab](docs/screenshots/appointments-tab.png)
+
+#### Prescriptions Tab
 ![Prescriptions Tab](docs/screenshots/prescriptions-tab.png)
+
+#### Medical Inventory Tab
 ![Medical Inventory Tab](docs/screenshots/medical-inventory-tab.png)
+
+#### Patient Feedback Tab
 ![Patient Feedback Tab](docs/screenshots/patient-feedback-tab.png)
 
 ## Documentation
