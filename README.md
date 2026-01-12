@@ -109,9 +109,7 @@ Database validation queries from `db/queries.sql` demonstrate correct schema imp
 
 ![Feedback Query](docs/screenshots/test-feedback-joined.png)
 
-### Validation Summary
-- ✅ All 8 tables populated with records
-- ✅ Foreign key constraints enforced (Department → Doctor, Patient/Doctor → Appointment, etc.)
-- ✅ Unique constraints working (emails, phone numbers)
-- ✅ Complex multi-table joins executing successfully
 
+## Contact
+
+For questions or issues regarding this project, please contact the repository owner.
