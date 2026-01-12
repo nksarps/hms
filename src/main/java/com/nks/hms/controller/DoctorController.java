@@ -13,7 +13,7 @@ import java.util.List;
  * Depends on IDoctorService abstraction (Dependency Inversion Principle).
  */
 public class DoctorController {
-    private static final int PAGE_SIZE = 10;
+    private static final int PAGE_SIZE = 25;
     private final IDoctorService doctorService;
     
     public DoctorController(IDoctorService doctorService) {

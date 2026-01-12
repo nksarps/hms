@@ -47,9 +47,6 @@ public class DoctorTabBuilder {
                 new Label("Sort:"), sortCombo);
         searchBox.setAlignment(Pos.CENTER_LEFT);
 
-        Pagination pagination = new Pagination(1, 0);
-        pagination.setMaxPageIndicatorCount(10);
-
         Label feedback = new Label();
         feedback.setStyle("-fx-text-fill: #006400;");
 
@@ -59,6 +56,11 @@ public class DoctorTabBuilder {
         TextField lastNameField = (TextField) form.getChildren().get(3);
         TextField phoneField = (TextField) form.getChildren().get(5);
         TextField emailField = (TextField) form.getChildren().get(7);
+
+        // Load initial doctor data into table
+        Pagination pagination = new Pagination(1, 0);
+        pagination.setMaxPageIndicatorCount(10);
+        controller.loadDoctors(table, pagination, "", sortCombo.getValue(), feedback);
 
         Button saveBtn = new Button("Save / Update");
         Button deleteBtn = new Button("Delete");
@@ -80,12 +82,9 @@ public class DoctorTabBuilder {
         tab.setContent(layout);
 
         // Wire up event handlers
-        wireEventHandlers(table, pagination, searchField, searchBtn, sortCombo, feedback,
-                         saveBtn, deleteBtn, clearBtn, firstNameField, lastNameField,
+        wireEventHandlers(table, pagination, searchField, searchBtn, sortCombo, 
+                         feedback, saveBtn, deleteBtn, clearBtn, firstNameField, lastNameField,
                          phoneField, emailField);
-
-        // Initial load
-        controller.loadDoctors(table, pagination, "", sortCombo.getValue(), feedback);
         
         return tab;
     }
@@ -112,8 +111,8 @@ public class DoctorTabBuilder {
     private ComboBox<String> buildSortComboBox() {
         ComboBox<String> sortCombo = new ComboBox<>();
         sortCombo.setItems(FXCollections.observableArrayList(
-                "ID (Newest)", "ID (Oldest)", "Name (A-Z)", "Name (Z-A)"));
-        sortCombo.setValue("ID (Newest)");
+                "All", "Name (A-Z)", "Name (Z-A)"));
+        sortCombo.setValue("All");
         sortCombo.setPrefWidth(130);
         return sortCombo;
     }
@@ -135,11 +134,11 @@ public class DoctorTabBuilder {
         return form;
     }
     
-    private void wireEventHandlers(TableView<Doctor> table, Pagination pagination,
-                                   TextField searchField, Button searchBtn, ComboBox<String> sortCombo,
-                                   Label feedback, Button saveBtn, Button deleteBtn, Button clearBtn,
-                                   TextField firstNameField, TextField lastNameField,
-                                   TextField phoneField, TextField emailField) {
+    private void wireEventHandlers(TableView<Doctor> table,
+                                   Pagination pagination, TextField searchField, Button searchBtn,
+                                   ComboBox<String> sortCombo, Label feedback, Button saveBtn,
+                                   Button deleteBtn, Button clearBtn, TextField firstNameField,
+                                   TextField lastNameField, TextField phoneField, TextField emailField) {
         
         // Search handlers
         searchBtn.setOnAction(e -> {
@@ -162,8 +161,9 @@ public class DoctorTabBuilder {
                 controller.loadDoctors(table, pagination, searchField.getText(), sortCombo.getValue(), feedback));
 
         // Table selection handler
-        table.getSelectionModel().selectedItemProperty().addListener((obs, old, doctor) -> 
-                controller.populateForm(doctor, firstNameField, lastNameField, phoneField, emailField));
+        table.getSelectionModel().selectedItemProperty().addListener((obs, old, doctor) -> {
+            controller.populateForm(doctor, firstNameField, lastNameField, phoneField, emailField);
+        });
 
         // Action button handlers
         saveBtn.setOnAction(e -> controller.saveDoctor(table, pagination, searchField, sortCombo, feedback,

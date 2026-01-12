@@ -44,6 +44,38 @@ DB_PASSWORD=your_password
 mvn javafx:run
 ```
 
+## JavaFX Interface
+
+The application features a modern tabbed interface for managing hospital data:
+
+### Features
+- **Patients Tab**: Search, add, update, and delete patient records with pagination
+- **Doctors Tab**: Manage doctor profiles and department assignments
+- **Appointments Tab**: Schedule and track patient appointments with date/time selection
+- **Prescriptions Tab**: Create and manage prescriptions with medication details
+- **Medical Inventory Tab**: Track medication stock levels and details
+- **Patient Feedback Tab**: View and manage patient feedback and ratings
+
+### Screenshots
+
+#### Patients Tab
+![Patients Tab](docs/screenshots/patients-tab.png)
+
+#### Doctors Tab
+![Doctors Tab](docs/screenshots/doctors-tab.png)
+
+#### Appointments Tab
+![Appointments Tab](docs/screenshots/appointments-tab.png)
+
+#### Prescriptions Tab
+![Prescriptions Tab](docs/screenshots/prescriptions-tab.png)
+
+#### Medical Inventory Tab
+![Medical Inventory Tab](docs/screenshots/medical-inventory-tab.png)
+
+#### Patient Feedback Tab
+![Patient Feedback Tab](docs/screenshots/patient-feedback-tab.png)
+
 ## Documentation
 
 - **ERD**: See [docs/hms-erd.jpeg](docs/hms-erd.jpeg) for the entity-relationship diagram
@@ -77,9 +109,7 @@ Database validation queries from `db/queries.sql` demonstrate correct schema imp
 
 ![Feedback Query](docs/screenshots/test-feedback-joined.png)
 
-### Validation Summary
-- ✅ All 8 tables populated with records
-- ✅ Foreign key constraints enforced (Department → Doctor, Patient/Doctor → Appointment, etc.)
-- ✅ Unique constraints working (emails, phone numbers)
-- ✅ Complex multi-table joins executing successfully
 
+## Contact
+
+For questions or issues regarding this project, please contact the repository owner.
