@@ -5,16 +5,20 @@ import com.nks.hms.controller.DoctorController;
 import com.nks.hms.controller.MedicalInventoryController;
 import com.nks.hms.controller.PatientController;
 import com.nks.hms.controller.PatientFeedbackController;
+import com.nks.hms.controller.PatientNoteController;
 import com.nks.hms.controller.PrescriptionController;
+import com.nks.hms.db.MongoDatabase;
 import com.nks.hms.repository.AppointmentRepository;
 import com.nks.hms.repository.DoctorRepository;
 import com.nks.hms.repository.IAppointmentRepository;
 import com.nks.hms.repository.IDoctorRepository;
 import com.nks.hms.repository.IMedicalInventoryRepository;
 import com.nks.hms.repository.IPatientFeedbackRepository;
+import com.nks.hms.repository.IPatientNoteRepository;
 import com.nks.hms.repository.IPatientRepository;
 import com.nks.hms.repository.IPrescriptionRepository;
 import com.nks.hms.repository.MedicalInventoryRepository;
+import com.nks.hms.repository.PatientNoteRepository;
 import com.nks.hms.repository.PatientFeedbackRepository;
 import com.nks.hms.repository.PatientRepository;
 import com.nks.hms.repository.PrescriptionRepository;
@@ -24,9 +28,11 @@ import com.nks.hms.service.IAppointmentService;
 import com.nks.hms.service.IDoctorService;
 import com.nks.hms.service.IMedicalInventoryService;
 import com.nks.hms.service.IPatientFeedbackService;
+import com.nks.hms.service.IPatientNoteService;
 import com.nks.hms.service.IPatientService;
 import com.nks.hms.service.IPrescriptionService;
 import com.nks.hms.service.MedicalInventoryService;
+import com.nks.hms.service.PatientNoteService;
 import com.nks.hms.service.PatientFeedbackService;
 import com.nks.hms.service.PatientService;
 import com.nks.hms.service.PrescriptionService;
@@ -195,7 +201,35 @@ public class ServiceFactory {
         return new PatientFeedbackController(feedbackService);
     }
     
+    /**
+     * Creates a configured patient note service with MongoDB repository.
+     * 
+     * @return Fully configured patient note service
+     */
+    public static IPatientNoteService createPatientNoteService() {
+        IPatientNoteRepository repository = createPatientNoteRepository();
+        return new PatientNoteService(repository);
+    }
+    
+    /**
+     * Creates a patient note controller with injected services.
+     * 
+     * @param noteService The patient note service to inject
+     * @param patientService The patient service to inject
+     * @param doctorService The doctor service to inject
+     * @return Configured patient note controller
+     */
+    public static PatientNoteController createPatientNoteController(IPatientNoteService noteService,
+                                                                     IPatientService patientService,
+                                                                     IDoctorService doctorService) {
+        return new PatientNoteController(noteService, patientService, doctorService);
+    }
+    
     // Private factory methods for internal dependencies
+    
+    private static IPatientNoteRepository createPatientNoteRepository() {
+        return new PatientNoteRepository(MongoDatabase.getDatabase());
+    }
     
     private static IPatientRepository createPatientRepository() {
         return new PatientRepository();
