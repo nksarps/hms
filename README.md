@@ -12,23 +12,49 @@ JavaFX desktop UI for hospital administration backed by a hybrid database archit
 
 ## Database Setup
 
-### 1. Create Database and Schema
+### MySQL Setup
+
+#### 1. Create Database and Schema
 ```bash
 mysql -u root -p < db/schema.sql
 ```
 This creates the `hms` database and all required tables (Patient, Doctor, Department, Appointment, Prescription, PrescriptionItem, MedicalInventory, PatientFeedback).
 
-### 2. Apply Search Indexes
+#### 2. Apply Search Indexes
 ```bash
 mysql -u root -p hms < db/search_indexes.sql
 ```
 Adds indexes on frequently searched columns to improve LIKE query performance.
 
-### 3. Load Sample Data
+#### 3. Load Sample Data
 ```bash
 mysql -u root -p hms < db/sample_data.sql
 ```
 Populates the database with 43 sample records per table for testing and demos.
+
+### MongoDB Setup
+
+#### 1. Start MongoDB Server
+Ensure MongoDB is running on your system:
+```bash
+# Windows
+net start MongoDB
+
+# macOS/Linux
+sudo systemctl start mongod
+```
+
+#### 2. Create Database and Collection
+MongoDB creates databases and collections automatically on first write, but you can optionally create them manually:
+```bash
+mongosh
+> use hms_nosql
+> db.createCollection("patient_notes")
+> db.patient_notes.createIndex({ "content": "text" })  # Full-text search index
+> exit
+```
+
+The `patient_notes` collection will be created automatically when the application first saves a note. The text index enables full-text search on clinical note content.
 
 ## Configuration
 
