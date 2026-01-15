@@ -10,7 +10,6 @@ import javafx.collections.FXCollections;
 import javafx.scene.control.*;
 import org.bson.types.ObjectId;
 
-import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 /**
@@ -127,198 +126,24 @@ public class PatientNoteController {
         }
     }
     
+
+    
     /**
-     * Loads patient notes into a ListView based on selected filters.
+     * Clears all form fields.
      * 
-     * @param notesList ListView to populate
-     * @param patientCombo Selected patient (can be null for all)
-     * @param doctorCombo Selected doctor (can be null for all)
-     * @param searchField Search text (can be empty)
-     * @param feedback Label for user feedback
+     * @param patientCombo Patient selection combo
+     * @param doctorCombo Doctor selection combo
+     * @param noteTypeCombo Note type combo
+     * @param contentArea Content text area
      */
-    public void loadNotes(ListView<PatientNote> notesList, 
-                         ComboBox<Patient> patientCombo,
+    public void clearForm(ComboBox<Patient> patientCombo,
                          ComboBox<Doctor> doctorCombo,
-                         TextField searchField,
-                         Label feedback) {
-        try {
-            List<PatientNote> notes;
-            Patient selectedPatient = patientCombo.getValue();
-            Doctor selectedDoctor = doctorCombo.getValue();
-            String searchText = searchField.getText().trim();
-            
-            // Determine which query to use based on selections
-            if (!searchText.isEmpty()) {
-                notes = noteService.searchNotes(searchText);
-            } else if (selectedPatient != null && selectedDoctor != null) {
-                notes = noteService.getNotesByPatientAndDoctor(selectedPatient.getId(), selectedDoctor.getId());
-            } else if (selectedPatient != null) {
-                notes = noteService.getNotesByPatientId(selectedPatient.getId());
-            } else if (selectedDoctor != null) {
-                notes = noteService.getNotesByDoctorId(selectedDoctor.getId());
-            } else {
-                notes = noteService.getAllNotes(100); // Limit to 100 most recent
-            }
-            
-            notesList.setItems(FXCollections.observableArrayList(notes));
-            
-            // Custom cell factory for displaying notes
-            notesList.setCellFactory(lv -> new ListCell<>() {
-                @Override
-                protected void updateItem(PatientNote note, boolean empty) {
-                    super.updateItem(note, empty);
-                    if (empty || note == null) {
-                        setText(null);
-                    } else {
-                        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
-                        String preview = note.getContent().length() > 50 
-                            ? note.getContent().substring(0, 50) + "..." 
-                            : note.getContent();
-                        setText(String.format("[%s] %s - Patient:%d Doctor:%d\n%s",
-                            note.getTimestamp().format(formatter),
-                            note.getNoteType(),
-                            note.getPatientId(),
-                            note.getDoctorId(),
-                            preview));
-                    }
-                }
-            });
-            
-            feedback.setText(String.format("Loaded %d note(s)", notes.size()));
-            feedback.setStyle("-fx-text-fill: green;");
-            
-        } catch (Exception e) {
-            feedback.setText("Error loading notes: " + e.getMessage());
-            feedback.setStyle("-fx-text-fill: red;");
-            e.printStackTrace();
-        }
-    }
-    
-    /**
-     * Saves a new patient note.
-     * 
-     * @param patientCombo Selected patient
-     * @param doctorCombo Selected doctor
-     * @param noteTypeCombo Selected note type
-     * @param contentArea Note content
-     * @param notesList ListView to refresh
-     * @param searchField Current search text
-     * @param feedback Label for user feedback
-     */
-    public void saveNote(ComboBox<Patient> patientCombo,
-                        ComboBox<Doctor> doctorCombo,
-                        ComboBox<String> noteTypeCombo,
-                        TextArea contentArea,
-                        ListView<PatientNote> notesList,
-                        TextField searchField,
-                        Label feedback) {
-        try {
-            Patient selectedPatient = patientCombo.getValue();
-            Doctor selectedDoctor = doctorCombo.getValue();
-            String noteType = noteTypeCombo.getValue();
-            String content = contentArea.getText();
-            
-            // Validation
-            if (selectedPatient == null) {
-                feedback.setText("Please select a patient");
-                feedback.setStyle("-fx-text-fill: red;");
-                return;
-            }
-            
-            if (selectedDoctor == null) {
-                feedback.setText("Please select a doctor");
-                feedback.setStyle("-fx-text-fill: red;");
-                return;
-            }
-            
-            if (noteType == null || noteType.isEmpty()) {
-                feedback.setText("Please select a note type");
-                feedback.setStyle("-fx-text-fill: red;");
-                return;
-            }
-            
-            if (content == null || content.trim().isEmpty()) {
-                feedback.setText("Please enter note content");
-                feedback.setStyle("-fx-text-fill: red;");
-                return;
-            }
-            
-            // Create and save note
-            PatientNote note = new PatientNote(
-                selectedPatient.getId(),
-                selectedDoctor.getId(),
-                noteType,
-                content.trim()
-            );
-            
-            ObjectId noteId = noteService.createNote(note);
-            
-            feedback.setText("Note saved successfully with ID: " + noteId.toHexString());
-            feedback.setStyle("-fx-text-fill: green;");
-            
-            // Clear form
-            contentArea.clear();
-            noteTypeCombo.setValue(null);
-            
-            // Reload notes list
-            loadNotes(notesList, patientCombo, doctorCombo, searchField, feedback);
-            
-        } catch (Exception e) {
-            feedback.setText("Error saving note: " + e.getMessage());
-            feedback.setStyle("-fx-text-fill: red;");
-            e.printStackTrace();
-        }
-    }
-    
-    /**
-     * Deletes a selected note.
-     * 
-     * @param notesList ListView containing notes
-     * @param patientCombo Current patient filter
-     * @param doctorCombo Current doctor filter
-     * @param searchField Current search text
-     * @param feedback Label for user feedback
-     */
-    public void deleteNote(ListView<PatientNote> notesList,
-                          ComboBox<Patient> patientCombo,
-                          ComboBox<Doctor> doctorCombo,
-                          TextField searchField,
-                          Label feedback) {
-        try {
-            PatientNote selectedNote = notesList.getSelectionModel().getSelectedItem();
-            
-            if (selectedNote == null) {
-                feedback.setText("Please select a note to delete");
-                feedback.setStyle("-fx-text-fill: red;");
-                return;
-            }
-            
-            // Confirmation dialog
-            Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
-            alert.setTitle("Delete Note");
-            alert.setHeaderText("Are you sure you want to delete this note?");
-            alert.setContentText("This action cannot be undone.");
-            
-            if (alert.showAndWait().get() == ButtonType.OK) {
-                boolean deleted = noteService.deleteNote(selectedNote.getId());
-                
-                if (deleted) {
-                    feedback.setText("Note deleted successfully");
-                    feedback.setStyle("-fx-text-fill: green;");
-                    
-                    // Reload notes list
-                    loadNotes(notesList, patientCombo, doctorCombo, searchField, feedback);
-                } else {
-                    feedback.setText("Failed to delete note");
-                    feedback.setStyle("-fx-text-fill: red;");
-                }
-            }
-            
-        } catch (Exception e) {
-            feedback.setText("Error deleting note: " + e.getMessage());
-            feedback.setStyle("-fx-text-fill: red;");
-            e.printStackTrace();
-        }
+                         ComboBox<String> noteTypeCombo,
+                         TextArea contentArea) {
+        patientCombo.setValue(null);
+        doctorCombo.setValue(null);
+        noteTypeCombo.setValue(null);
+        contentArea.clear();
     }
     
     /**
@@ -364,110 +189,6 @@ public class PatientNoteController {
         } catch (Exception e) {
             e.printStackTrace();
         }
-    }
-    
-    /**
-     * Updates an existing note with new information.
-     * 
-     * @param selectedNote The note to update
-     * @param patientCombo Selected patient
-     * @param doctorCombo Selected doctor
-     * @param noteTypeCombo Selected note type
-     * @param contentArea Note content
-     * @param notesList ListView to refresh
-     * @param searchField Current search text
-     * @param feedback Label for user feedback
-     */
-    public void updateNote(PatientNote selectedNote,
-                          ComboBox<Patient> patientCombo,
-                          ComboBox<Doctor> doctorCombo,
-                          ComboBox<String> noteTypeCombo,
-                          TextArea contentArea,
-                          ListView<PatientNote> notesList,
-                          TextField searchField,
-                          Label feedback) {
-        try {
-            if (selectedNote == null) {
-                feedback.setText("Please select a note to update");
-                feedback.setStyle("-fx-text-fill: red;");
-                return;
-            }
-            
-            Patient selectedPatient = patientCombo.getValue();
-            Doctor selectedDoctor = doctorCombo.getValue();
-            String noteType = noteTypeCombo.getValue();
-            String content = contentArea.getText();
-            
-            // Validation
-            if (selectedPatient == null) {
-                feedback.setText("Please select a patient");
-                feedback.setStyle("-fx-text-fill: red;");
-                return;
-            }
-            
-            if (selectedDoctor == null) {
-                feedback.setText("Please select a doctor");
-                feedback.setStyle("-fx-text-fill: red;");
-                return;
-            }
-            
-            if (noteType == null || noteType.isEmpty()) {
-                feedback.setText("Please select a note type");
-                feedback.setStyle("-fx-text-fill: red;");
-                return;
-            }
-            
-            if (content == null || content.trim().isEmpty()) {
-                feedback.setText("Please enter note content");
-                feedback.setStyle("-fx-text-fill: red;");
-                return;
-            }
-            
-            // Update the note fields
-            selectedNote.setPatientId(selectedPatient.getId());
-            selectedNote.setDoctorId(selectedDoctor.getId());
-            selectedNote.setNoteType(noteType);
-            selectedNote.setContent(content.trim());
-            
-            boolean updated = noteService.updateNote(selectedNote);
-            
-            if (updated) {
-                feedback.setText("Note updated successfully");
-                feedback.setStyle("-fx-text-fill: green;");
-                
-                // Clear form
-                clearForm(patientCombo, doctorCombo, noteTypeCombo, contentArea);
-                
-                // Reload notes list
-                loadNotes(notesList, patientCombo, doctorCombo, searchField, feedback);
-            } else {
-                feedback.setText("Failed to update note");
-                feedback.setStyle("-fx-text-fill: red;");
-            }
-            
-        } catch (Exception e) {
-            feedback.setText("Error updating note: " + e.getMessage());
-            feedback.setStyle("-fx-text-fill: red;");
-            e.printStackTrace();
-        }
-    }
-    
-    /**
-     * Clears all form fields.
-     * 
-     * @param patientCombo Patient selection combo
-     * @param doctorCombo Doctor selection combo
-     * @param noteTypeCombo Note type combo
-     * @param contentArea Content text area
-     */
-    public void clearForm(ComboBox<Patient> patientCombo,
-                         ComboBox<Doctor> doctorCombo,
-                         ComboBox<String> noteTypeCombo,
-                         TextArea contentArea) {
-        patientCombo.setValue(null);
-        doctorCombo.setValue(null);
-        noteTypeCombo.setValue(null);
-        contentArea.clear();
     }
     
     // ==================== TableView with Pagination Methods ====================
