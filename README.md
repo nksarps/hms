@@ -30,7 +30,6 @@ Adds indexes on frequently searched columns to improve LIKE query performance.
 ```bash
 mysql -u root -p hms < db/sample_data.sql
 ```
-Populates the database with 43 sample records per table for testing and demos.
 
 ### MongoDB Setup
 
