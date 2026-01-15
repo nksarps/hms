@@ -43,8 +43,7 @@ public class PrescriptionController {
             List<Prescription> prescriptions = prescriptionService.searchPrescriptions(searchTerm, PAGE_SIZE, offset, sortBy);
             table.setItems(FXCollections.observableArrayList(prescriptions));
             
-            String cacheInfo = " | Cache: " + prescriptionService.getCacheStats();
-            feedback.setText(total + " prescriptions found" + cacheInfo);
+            feedback.setText(total + " prescriptions found");
             feedback.setStyle("-fx-text-fill: #006400;");
         } catch (SQLException ex) {
             feedback.setText("Failed to load prescriptions: " + ex.getMessage());

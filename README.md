@@ -1,41 +1,72 @@
 # HMS
 
-JavaFX desktop UI for hospital administration (patients and doctors) backed by MySQL via JDBC.
+JavaFX desktop UI for hospital administration backed by a hybrid database architecture: MySQL for structured data and MongoDB for unstructured patient notes.
 
 ## Prerequisites
 
 - Java 21 or higher
 - Maven 3.6+
-- MySQL 8.0+
+- MySQL 8.0+ (for structured data)
+- MongoDB 5.0+ (for patient notes)
 - `.env` file for database connection credentials
 
 ## Database Setup
 
-### 1. Create Database and Schema
+### MySQL Setup
+
+#### 1. Create Database and Schema
 ```bash
 mysql -u root -p < db/schema.sql
 ```
 This creates the `hms` database and all required tables (Patient, Doctor, Department, Appointment, Prescription, PrescriptionItem, MedicalInventory, PatientFeedback).
 
-### 2. Apply Search Indexes
+#### 2. Apply Search Indexes
 ```bash
 mysql -u root -p hms < db/search_indexes.sql
 ```
 Adds indexes on frequently searched columns to improve LIKE query performance.
 
-### 3. Load Sample Data
+#### 3. Load Sample Data
 ```bash
 mysql -u root -p hms < db/sample_data.sql
 ```
-Populates the database with 43 sample records per table for testing and demos.
+
+### MongoDB Setup
+
+#### 1. Start MongoDB Server
+Ensure MongoDB is running on your system:
+```bash
+# Windows
+net start MongoDB
+
+# macOS/Linux
+sudo systemctl start mongod
+```
+
+#### 2. Create Database and Collection
+MongoDB creates databases and collections automatically on first write, but you can optionally create them manually:
+```bash
+mongosh
+> use hms_nosql
+> db.createCollection("patient_notes")
+> db.patient_notes.createIndex({ "content": "text" })  # Full-text search index
+> exit
+```
+
+The `patient_notes` collection will be created automatically when the application first saves a note. The text index enables full-text search on clinical note content.
 
 ## Configuration
 
 Create a `.env` file in the project root with your database credentials:
 ```
+# MySQL Configuration
 DB_URL=jdbc:mysql://localhost:3306/hms
 DB_USER=root
 DB_PASSWORD=your_password
+
+# MongoDB Configuration
+MONGO_URI=mongodb://localhost:27017
+MONGO_DB_NAME=your_database_name
 ```
 
 ## Running the Application
@@ -51,6 +82,7 @@ The application features a modern tabbed interface for managing hospital data:
 ### Features
 - **Patients Tab**: Search, add, update, and delete patient records with pagination
 - **Doctors Tab**: Manage doctor profiles and department assignments
+- **Patient Notes Tab**: Create and manage unstructured clinical notes with MongoDB (NoSQL)
 - **Appointments Tab**: Schedule and track patient appointments with date/time selection
 - **Prescriptions Tab**: Create and manage prescriptions with medication details
 - **Medical Inventory Tab**: Track medication stock levels and details
@@ -80,6 +112,11 @@ The application features a modern tabbed interface for managing hospital data:
 
 - **ERD**: See [docs/hms-erd.jpeg](docs/hms-erd.jpeg) for the entity-relationship diagram
 - **Database Schema**: See [docs/database.md](docs/database.md) for detailed table descriptions, fields, and relationships
+- **NoSQL Comparison**: See [docs/nosql-comparison.md](docs/nosql-comparison.md) for MongoDB vs MySQL comparison and patient notes implementation
+
+## Architecture
+
+The HMS implements a **hybrid database architecture (polyglot persistence)** that strategically uses MySQL for structured transactional data (patient demographics, appointments, prescriptions, inventory) requiring strong consistency and referential integrity, while MongoDB handles unstructured clinical notes with flexible schemas, nested vital signs arrays, and full-text search capabilities. This approach leverages each database's strengths—relational guarantees for critical operations and NoSQL flexibility for evolving clinical documentation.
 
 ## Testing Evidence
 

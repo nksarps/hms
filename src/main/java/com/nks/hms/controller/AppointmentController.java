@@ -47,8 +47,7 @@ public class AppointmentController {
             table.setItems(FXCollections.observableArrayList(appointments));
             
             String searchType = isNumeric(searchTerm) ? " (ID search)" : "";
-            String cacheInfo = " | Cache: " + appointmentService.getCacheStats();
-            feedback.setText(total + " appointments found" + searchType + cacheInfo);
+            feedback.setText(total + " appointments found" + searchType);
             feedback.setStyle("-fx-text-fill: #006400;");
         } catch (SQLException ex) {
             feedback.setText("Failed to load appointments: " + ex.getMessage());

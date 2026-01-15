@@ -38,8 +38,7 @@ public class PatientFeedbackController {
             List<PatientFeedback> feedbackList = feedbackService.searchFeedback(searchTerm, PAGE_SIZE, offset, sortBy);
             table.setItems(FXCollections.observableArrayList(feedbackList));
             
-            String cacheInfo = " | Cache: " + feedbackService.getCacheStats();
-            feedback.setText(total + " feedback records found" + cacheInfo);
+            feedback.setText(total + " feedback records found");
             feedback.setStyle("-fx-text-fill: #006400;");
         } catch (SQLException ex) {
             feedback.setText("Failed to load feedback: " + ex.getMessage());

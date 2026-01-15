@@ -38,8 +38,7 @@ public class DoctorController {
             table.setItems(FXCollections.observableArrayList(doctors));
             
             String searchType = isNumeric(searchTerm) ? " (ID search)" : "";
-            String cacheInfo = " | Cache: " + doctorService.getCacheStats();
-            feedback.setText(total + " doctors found" + searchType + cacheInfo);
+            feedback.setText(total + " doctors found" + searchType);
             feedback.setStyle("-fx-text-fill: #006400;");
         } catch (SQLException ex) {
             feedback.setText("Failed to load doctors: " + ex.getMessage());

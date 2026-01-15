@@ -37,8 +37,7 @@ public class PatientController {
             List<Patient> patients = patientService.searchPatients(searchTerm, PAGE_SIZE, offset, sortBy);
             table.setItems(FXCollections.observableArrayList(patients));
             
-            String cacheInfo = " | Cache: " + patientService.getCacheStats();
-            feedback.setText(total + " patients found" + cacheInfo);
+            feedback.setText(total + " patients found");
             feedback.setStyle("-fx-text-fill: #006400;");
         } catch (SQLException ex) {
             feedback.setText("Failed to load patients: " + ex.getMessage());
