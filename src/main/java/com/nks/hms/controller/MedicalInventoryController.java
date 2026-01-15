@@ -38,8 +38,7 @@ public class MedicalInventoryController {
             List<MedicalInventory> items = inventoryService.searchInventory(searchTerm, PAGE_SIZE, offset, sortBy);
             table.setItems(FXCollections.observableArrayList(items));
             
-            String cacheInfo = " | Cache: " + inventoryService.getCacheStats();
-            feedback.setText(total + " items found" + cacheInfo);
+            feedback.setText(total + " items found");
             feedback.setStyle("-fx-text-fill: #006400;");
         } catch (SQLException ex) {
             feedback.setText("Failed to load inventory: " + ex.getMessage());
