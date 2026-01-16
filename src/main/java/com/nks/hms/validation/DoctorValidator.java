@@ -29,6 +29,12 @@ public class DoctorValidator implements IValidator<Doctor> {
             return Optional.of("Last name must contain only letters");
         }
         
+        if (doctor.getMiddleName() != null && !doctor.getMiddleName().isBlank()) {
+            if (!isValidName(doctor.getMiddleName())) {
+                return Optional.of("Middle name must contain only letters");
+            }
+        }
+        
         if (doctor.getPhone() == null || doctor.getPhone().isBlank()) {
             return Optional.of("Phone is required");
         }
@@ -48,7 +54,7 @@ public class DoctorValidator implements IValidator<Doctor> {
     }
     
     private boolean isValidName(String name) {
-        return name.matches("^[A-Za-z]+$");
+        return name.matches("^[A-Za-z'-]+$");
     }
 
     private boolean isValidPhone(String phone) {
