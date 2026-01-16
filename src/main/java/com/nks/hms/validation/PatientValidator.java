@@ -18,9 +18,15 @@ public class PatientValidator implements IValidator<Patient> {
         if (patient.getFirstName() == null || patient.getFirstName().isBlank()) {
             return Optional.of("First name is required");
         }
+        if (!isValidName(patient.getFirstName())) {
+            return Optional.of("First name must contain only letters");
+        }
         
         if (patient.getLastName() == null || patient.getLastName().isBlank()) {
             return Optional.of("Last name is required");
+        }
+        if (!isValidName(patient.getLastName())) {
+            return Optional.of("Last name must contain only letters");
         }
         
         if (patient.getDateOfBirth() == null) {
@@ -30,9 +36,8 @@ public class PatientValidator implements IValidator<Patient> {
         if (patient.getPhone() == null || patient.getPhone().isBlank()) {
             return Optional.of("Phone is required");
         }
-        
-        if (patient.getPhone().length() < 7) {
-            return Optional.of("Phone must be at least 7 digits");
+        if (!isValidPhone(patient.getPhone())) {
+            return Optional.of("Phone must contain only digits and be 7-15 digits long");
         }
         
         if (patient.getEmail() == null || patient.getEmail().isBlank()) {
@@ -46,7 +51,15 @@ public class PatientValidator implements IValidator<Patient> {
         return Optional.empty();
     }
     
+    private boolean isValidName(String name) {
+        return name.matches("^[A-Za-z]+$");
+    }
+
+    private boolean isValidPhone(String phone) {
+        return phone.matches("^[0-9]{7,15}$");
+    }
+
     private boolean isValidEmail(String email) {
-        return email.matches("^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$");
+        return email.matches("^[A-Za-z0-9._%+-]+@[A-Za-z]+\\.[A-Za-z]+$");
     }
 }
