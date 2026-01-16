@@ -108,11 +108,13 @@ The application features a modern tabbed interface for managing hospital data:
 #### Patient Feedback Tab
 ![Patient Feedback Tab](docs/screenshots/patient-feedback-tab.png)
 
+
 ## Documentation
 
 - **ERD**: See [docs/hms-erd.jpeg](docs/hms-erd.jpeg) for the entity-relationship diagram
 - **Database Schema**: See [docs/database.md](docs/database.md) for detailed table descriptions, fields, and relationships
 - **NoSQL Comparison**: See [docs/nosql-comparison.md](docs/nosql-comparison.md) for MongoDB vs MySQL comparison and patient notes implementation
+- **Performance Metrics**: See [docs/performance_report.md](docs/performance_report.md) for performance analysis of the HMS.
 
 ## Architecture
 

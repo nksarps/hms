@@ -18,17 +18,22 @@ public class DoctorValidator implements IValidator<Doctor> {
         if (doctor.getFirstName() == null || doctor.getFirstName().isBlank()) {
             return Optional.of("First name is required");
         }
+        if (!isValidName(doctor.getFirstName())) {
+            return Optional.of("First name must contain only letters");
+        }
         
         if (doctor.getLastName() == null || doctor.getLastName().isBlank()) {
             return Optional.of("Last name is required");
+        }
+        if (!isValidName(doctor.getLastName())) {
+            return Optional.of("Last name must contain only letters");
         }
         
         if (doctor.getPhone() == null || doctor.getPhone().isBlank()) {
             return Optional.of("Phone is required");
         }
-        
-        if (doctor.getPhone().length() < 7) {
-            return Optional.of("Phone must be at least 7 digits");
+        if (!isValidPhone(doctor.getPhone())) {
+            return Optional.of("Phone must contain only digits and be 7-15 digits long");
         }
         
         if (doctor.getEmail() == null || doctor.getEmail().isBlank()) {
@@ -42,7 +47,15 @@ public class DoctorValidator implements IValidator<Doctor> {
         return Optional.empty();
     }
     
+    private boolean isValidName(String name) {
+        return name.matches("^[A-Za-z]+$");
+    }
+
+    private boolean isValidPhone(String phone) {
+        return phone.matches("^[0-9]{7,15}$");
+    }
+
     private boolean isValidEmail(String email) {
-        return email.matches("^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$");
+        return email.matches("^[A-Za-z0-9._%+-]+@[A-Za-z]+\\.[A-Za-z]+$");
     }
 }
