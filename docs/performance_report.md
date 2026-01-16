@@ -17,23 +17,18 @@ This report details the impact of adding database indexes and implementing cachi
 
 
 ### Example Metrics
-| Query              | Cost Before | Cost After | Time Before | Time After |
-|--------------------|-------------|------------|-------------|------------|
-| `appoinment_perf`  | 91.2        | 0.35       | 1.22s       | 0.121s     |
-| `inventory_perf`   | (see below) | (see below)| (see below) | (see below)|
-| `prescription_perf`| (see below) | (see below)| (see below) | (see below)|
 
-#### appoinment_perf
+#### 1. appoinment_perf
 The `appoinment_perf` query was used to measure the effect of indexing on the appointments table. Before indexing, the query cost was **91.2** and the actual execution time was **1.22 seconds**. After adding the appropriate indexes, the cost dropped dramatically to **0.35** and the execution time to **0.121 seconds**.
 
 ![appoinment_perf before and after](screenshots/appointment_perf.png)
 
-#### inventory_perf
+#### 2. inventory_perf
 The `inventory_perf` query demonstrates similar improvements for the inventory table. Prior to indexing, the query incurred a cost of **91.8** and took **0.575 seconds** to execute. With the new indexes in place, the cost was reduced to **11.2** and the execution time decreased to **0.154 seconds**. The image below provides a visual comparison of the query plans and timings before and after indexing.
 
 ![inventory_perf before and after](screenshots/inventory_perf.png)
 
-#### prescription_perf
+#### 3. prescription_perf
 The `prescription_perf` query highlights the effect of indexing on the prescriptions table. Initially, the query had a cost of **91.2** and took **2.04 seconds** to run. After indexes were introduced, the cost was reduced to **0.912** and the execution time fell to just **0.0195 seconds**. The screenshot below illustrates these performance gains.
 
 ![prescription_perf before and after](screenshots/prescription_perf.png)
